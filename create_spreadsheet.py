@@ -1,8 +1,8 @@
-
 from __future__ import print_function
 import httplib2
 import os
 
+from pprint import pprint
 from apiclient import discovery
 from oauth2client import client
 from oauth2client import tools
@@ -18,8 +18,7 @@ except ImportError:
 # at ~/.credentials/sheets.googleapis.com-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 CLIENT_SECRET_FILE = 'client_secret.json'
-APPLICATION_NAME = 'Google Sheets API Python Quickstart'
-
+APPLICATION_NAME = 'Table Tennis Automation'
 
 def get_credentials():
     """Gets valid user credentials from storage.
@@ -34,9 +33,7 @@ def get_credentials():
     credential_dir = os.path.join(home_dir, '.credentials')
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir,
-                                   'sheets.googleapis.com-python-quickstart.json')
-
+    credential_path = os.path.join(credential_dir, 'sheets.googleapis.com-python-quickstart.json')
     store = Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
@@ -50,12 +47,6 @@ def get_credentials():
     return credentials
 
 def main():
-    """Shows basic usage of the Sheets API.
-
-    Creates a Sheets API service object and prints the names and majors of
-    students in a sample spreadsheet:
-    https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
-    """
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     discoveryUrl = ('https://sheets.googleapis.com/$discovery/rest?'
@@ -63,27 +54,46 @@ def main():
     service = discovery.build('sheets', 'v4', http=http,
                               discoveryServiceUrl=discoveryUrl)
 
-    # spreadsheetId = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
-    # rangeName = 'Class Data!A2:E'
-    # result = service.spreadsheets().values().get(
-    #     spreadsheetId=spreadsheetId, range=rangeName).execute()
-    # values = result.get('values', [])
-    #
-    # if not values:
-    #     print('No data found.')
-    # else:
-    #     print('Name, Major:')
-    #     for row in values:
-    #         # Print columns A and E, which correspond to indices 0 and 4.
-    #         print('%s, %s' % (row[0], row[4]))
+    # get JSON template of spreadsheet
+    # summary_request = service.spreadsheets().values().batchGet(
+    #     spreadsheetId=summary_template_id,
+    #     ranges=['A:A', 'B:B', 'C:C', 'D:D', 'E:E', 'F:F', 'G:G', 'H:H', 'I:I']
+    # )
+    # summary_response = summary_request.execute()
 
-    spreadsheet_body = {
-        # TODO: Add desired entries to the request body.
+    # first we create an empty spreadsheet
+    new_spreadsheet_request = service.spreadsheets().create(body={})
+    new_spreadsheet_response = new_spreadsheet_request.execute()
+    new_spreadsheet_id = new_spreadsheet_response['spreadsheetId']
+
+    # this is the id for the summary page template (currently called "SUMMARY TEMPLATE")
+    # we start out with no formulas on this page to mitigate request errors
+    summary_template_id = '1C-FkQT2XNTaylUV28e-VbsD7FTPZwjyQb1kOwYubMMg'
+
+    body = {
+        # The ID of the spreadsheet to copy the sheet to.
+        'destination_spreadsheet_id': new_spreadsheet_id
     }
 
-    request = service.spreadsheets().create(body=spreadsheet_body)
-    response = request.execute()
+    # now we copy the summary page template to the empty spreadsheet we created
+    # note: if the sheet that you're trying to copy over references other sheets in its formula, copying may not work
+    copy_request = service.spreadsheets().sheets().copyTo(spreadsheetId=summary_template_id, sheetId=0, body=body)
+    copy_response = copy_request.execute()
 
+    # Now we need to clean up and remove the first sheet and rename the copied sheet
+    cleanup_body = {
+        'requests': [
+            {
+                'deleteSheet': {
+                    'sheetId': 0
+                }
+            }
+        ]
+    }
+    cleanup_request = service.spreadsheets().batchUpdate(spreadsheetId=new_spreadsheet_id, body=cleanup_body)
+    cleanup_response = cleanup_request.execute()
+
+    pprint(cleanup_response)
 
 if __name__ == '__main__':
     main()
