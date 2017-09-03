@@ -79,13 +79,29 @@ def main():
     # note: if the sheet that you're trying to copy over references other sheets in its formula, copying may not work
     copy_request = service.spreadsheets().sheets().copyTo(spreadsheetId=summary_template_id, sheetId=0, body=body)
     copy_response = copy_request.execute()
+    copied_sheet_id = copy_response['sheetId']
 
-    # Now we need to clean up and remove the first sheet and rename the copied sheet
+    # Now we need to clean up and remove the first sheet, rename the copied sheet, and rename the spreadsheet itselfs
     cleanup_body = {
         'requests': [
             {
                 'deleteSheet': {
                     'sheetId': 0
+                }
+            },
+            {
+                'updateSpreadsheetProperties': {
+                    'properties': {'title': 'League'},
+                    'fields': 'title'
+                }
+            },
+            {
+                'updateSheetProperties': {
+                    'properties': {
+                        'sheetId': copied_sheet_id,
+                        'title': 'Summary',
+                    },
+                    'fields': 'title'
                 }
             }
         ]
