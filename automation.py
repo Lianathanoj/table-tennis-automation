@@ -78,9 +78,9 @@ def main():
     # TODO: implement going backwards or redoing previous steps (probably use a heap)
     # TODO: subdivide code into modular portions
 
-    group_numbers = get_group_sizes()
+    # list of groups, e.g. [4,5,6] means group 1 contains 4 people, group 2 contains 5 people, etc.
+    group_sizes = get_group_sizes()
 
-    sys.exit()
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     discoveryUrl = 'https://sheets.googleapis.com/$discovery/rest?version=v4'
@@ -91,28 +91,57 @@ def main():
     new_spreadsheet_response = new_spreadsheet_request.execute()
     new_spreadsheet_id = new_spreadsheet_response['spreadsheetId']
 
-    # this is the id for the summary page template (currently called "SUMMARY TEMPLATE")
+    # this is the id for the summary page template (currently called "RESULTS TEMPLATE")
     # we start out with no formulas on this page to mitigate request errors
-    template_id = '1C-FkQT2XNTaylUV28e-VbsD7FTPZwjyQb1kOwYubMMg'
+    template_id = '1yalrB6cvCcdIoYb1r8cEVyXHev3pG0tPx31o9UDflyU'
     destination_body = {
         # The ID of the spreadsheet to copy the sheet to.
         'destination_spreadsheet_id': new_spreadsheet_id
     }
 
-    # now we copy the summary page template to the empty spreadsheet we created
-    # note: if the sheet that you're trying to copy over references other sheets in its formula, copying may not work
-    copy_request = service.spreadsheets().sheets().copyTo(spreadsheetId=template_id, sheetId=0, body=destination_body)
-    copy_response = copy_request.execute()
-    copied_sheet_id = copy_response['sheetId']
+    """
+    notes:
+    group 1 (4) at row 5
+    group 1 (5) at row 12
+    group 1 (6) at row 20
+    group 1 (7) at row 29
 
-    # Now we need to clean up and remove the first sheet, rename the copied sheet, and rename the spreadsheet itself
+    group 2 (4) at row 41
+    group 2 (5) at row 48
+    group 2 (6) at row 56
+
+    group 3 (4) at row 67
+    group 3 (5) at row 74
+    group 3 (6) at row 82
+
+    group 4 (4) at row 93
+    group 4 (5) at row 100
+    group 4 (6) at row 108
+    """
+    # construct dictionary with keys being tuples of (group_number, group_size) and values being the row number
+    group_locations = {
+        (1, 4): 5, (1, 5): 12, (1, 6): 20, (1,7): 29,
+        (2, 4): 41, (2, 5): 48, (2,6): 56,
+        (3, 4): 67, (3, 5): 74, (3,6): 82,
+        (4, 4): 93, (4, 5): 100, (4,6): 108
+    }
+    # loop through each group to find group size and find where each group is located on the template
+    range_names = []
+    for group_index in range(len(group_sizes)):
+        group_number = group_index + 1
+        group_size = group_sizes[group_index]
+        group_location = group_locations[(group_number, group_size)]
+        columns = 'BCDEFGH'
+        # e.g. if group 1 had a size of 4, this would grab the section from B:5 to B:10 ... H:5 to H:10
+        for letter in columns:
+            range_names.append(letter + str(group_location) + ':' + letter + str(group_location + group_size + 1))
+
+    get_groups_request = service.spreadsheets().values().batchGet(spreadsheetId=template_id, ranges=range_names)
+    get_groups_response = get_groups_request.execute()
+
+    # we need to clean up by renaming the first sheet and renaming the spreadsheet itself
     cleanup_body = {
         'requests': [
-            {
-                'deleteSheet': {
-                    'sheetId': 0
-                }
-            },
             {
                 'updateSpreadsheetProperties': {
                     'properties': {'title': 'League'},
@@ -122,7 +151,7 @@ def main():
             {
                 'updateSheetProperties': {
                     'properties': {
-                        'sheetId': copied_sheet_id,
+                        'sheetId': 0,
                         'title': 'Summary',
                     },
                     'fields': 'title'
@@ -133,7 +162,53 @@ def main():
     cleanup_request = service.spreadsheets().batchUpdate(spreadsheetId=new_spreadsheet_id, body=cleanup_body)
     cleanup_response = cleanup_request.execute()
 
-    pprint(cleanup_response)
+    # place the respective groups onto the summary sheet on the new, empty spreadsheet
+    create_groups_body = {
+        'valueInputOption': 'raw',
+        'data': get_groups_response['valueRanges'],
+        "includeValuesInResponse": True,
+        "responseValueRenderOption": 'formatted_value',
+        "responseDateTimeRenderOption": 'formatted_string',
+    }
+    create_groups_request = service.spreadsheets().values().batchUpdate(spreadsheetId=new_spreadsheet_id, body=create_groups_body)
+    create_groups_response = create_groups_request.execute()
+    pprint(create_groups_response)
+
+
+    # # now we copy the summary page template to the empty spreadsheet we created
+    # # note: if the sheet that you're trying to copy over references other sheets in its formula, copying may not work
+    # copy_request = service.spreadsheets().sheets().copyTo(spreadsheetId=template_id, sheetId=0, body=destination_body)
+    # copy_response = copy_request.execute()
+    # copied_sheet_id = copy_response['sheetId']
+    #
+    # # we need to clean up and remove the first sheet, rename the copied sheet, and rename the spreadsheet itself
+    # cleanup_body = {
+    #     'requests': [
+    #         {
+    #             'deleteSheet': {
+    #                 'sheetId': 0
+    #             }
+    #         },
+    #         {
+    #             'updateSpreadsheetProperties': {
+    #                 'properties': {'title': 'League'},
+    #                 'fields': 'title'
+    #             }
+    #         },
+    #         {
+    #             'updateSheetProperties': {
+    #                 'properties': {
+    #                     'sheetId': copied_sheet_id,
+    #                     'title': 'Summary',
+    #                 },
+    #                 'fields': 'title'
+    #             }
+    #         }
+    #     ]
+    # }
+    # cleanup_request = service.spreadsheets().batchUpdate(spreadsheetId=new_spreadsheet_id, body=cleanup_body)
+    # cleanup_response = cleanup_request.execute()
+    # pprint(cleanup_response)
 
 if __name__ == '__main__':
     main()
