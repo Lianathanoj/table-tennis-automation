@@ -91,7 +91,7 @@ def main():
     new_spreadsheet_response = new_spreadsheet_request.execute()
     new_spreadsheet_id = new_spreadsheet_response['spreadsheetId']
 
-    # cleanup by renaming the first sheet, merging the first column, and renaming the spreadsheet itself
+    # cleanup by renaming the first sheet, merging relevant cells, and renaming the spreadsheet itself
     cleanup_body = {
         'requests': [
             {
@@ -116,6 +116,18 @@ def main():
                         'startRowIndex': 0,
                         'endRowIndex': 1,
                         'startColumnIndex': 0,
+                        'endColumnIndex': 9
+                    },
+                    'mergeType': 'MERGE_ALL'
+                }
+            },
+            {
+                'mergeCells': {
+                    'range': {
+                        'sheetId': 0,
+                        'startRowIndex': 2,
+                        'endRowIndex': 3,
+                        'startColumnIndex': 1,
                         'endColumnIndex': 8
                     },
                     'mergeType': 'MERGE_ALL'
@@ -163,11 +175,11 @@ def main():
 
     # loop through each group to find group size and find where each group is located on the template
     range_names = []
+    columns='BCDEFGH'
     for group_index in range(len(group_sizes)):
         group_number = group_index + 1
         group_size = group_sizes[group_index]
         group_location = group_locations[(group_number, group_size)]
-        columns = 'BCDEFGH'
         # e.g. if group 1 had a size of 4, this would grab the section from B:5 to B:10 ... H:5 to H:10
         for letter in columns:
             range_names.append(letter + str(group_location) + ':' + letter + str(group_location + group_size + 1))
@@ -175,6 +187,21 @@ def main():
     # get groups from template by reading discontinuous cell values
     get_groups_request = service.spreadsheets().values().batchGet(spreadsheetId=template_id, ranges=range_names)
     get_groups_response = get_groups_request.execute()
+
+    """
+    notes: first group should always start at B5
+    """
+    # change chart ranges so they fall close to each other
+    table_row_index = 5
+    for group_index in range(len(group_sizes)):
+        for column_index in range(len(columns)):
+            index = group_index * len(columns) + column_index
+            get_groups_response['valueRanges'][index]['range'] = 'Summary!'\
+                                                                 + columns[column_index]\
+                                                                 + str(table_row_index)\
+                                                                 + ':' + columns[column_index]\
+                                                                 + str(table_row_index + group_sizes[group_index] + 1)
+        table_row_index += group_sizes[group_index] + 3
 
     # place the respective groups onto the summary sheet on the new, empty spreadsheet
     create_groups_body = {
@@ -184,7 +211,8 @@ def main():
         "responseValueRenderOption": 'formatted_value',
         "responseDateTimeRenderOption": 'formatted_string',
     }
-    create_groups_request = service.spreadsheets().values().batchUpdate(spreadsheetId=new_spreadsheet_id, body=create_groups_body)
+    create_groups_request = service.spreadsheets().values().batchUpdate(spreadsheetId=new_spreadsheet_id,
+                                                                        body=create_groups_body)
     create_groups_response = create_groups_request.execute()
 
 if __name__ == '__main__':
