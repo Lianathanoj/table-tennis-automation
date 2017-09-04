@@ -78,7 +78,7 @@ def main():
     # TODO: implement going backwards or redoing previous steps (probably use a heap)
     # TODO: subdivide code into modular portions
 
-    # list of groups, e.g. [4,5,6] means group 1 contains 4 people, group 2 contains 5 people, etc.
+    # list of groups, e.g. [4, 5, 6] means group 1 contains 4 people, group 2 contains 5 people, etc.
     group_sizes = get_group_sizes()
 
     credentials = get_credentials()
@@ -90,6 +90,41 @@ def main():
     new_spreadsheet_request = service.spreadsheets().create(body={})
     new_spreadsheet_response = new_spreadsheet_request.execute()
     new_spreadsheet_id = new_spreadsheet_response['spreadsheetId']
+
+    # cleanup by renaming the first sheet, merging the first column, and renaming the spreadsheet itself
+    cleanup_body = {
+        'requests': [
+            {
+                'updateSpreadsheetProperties': {
+                    'properties': {'title': 'League'},
+                    'fields': 'title'
+                }
+            },
+            {
+                'updateSheetProperties': {
+                    'properties': {
+                        'sheetId': 0,
+                        'title': 'Summary',
+                    },
+                    'fields': 'title'
+                }
+            },
+            {
+                'mergeCells': {
+                    'range': {
+                        'sheetId': 0,
+                        'startRowIndex': 0,
+                        'endRowIndex': 1,
+                        'startColumnIndex': 0,
+                        'endColumnIndex': 8
+                    },
+                    'mergeType': 'MERGE_ALL'
+                }
+            }
+        ]
+    }
+    cleanup_request = service.spreadsheets().batchUpdate(spreadsheetId=new_spreadsheet_id, body=cleanup_body)
+    cleanup_response = cleanup_request.execute()
 
     # this is the id for the summary page template (currently called "RESULTS TEMPLATE")
     # we start out with no formulas on this page to mitigate request errors
@@ -125,6 +160,7 @@ def main():
         (3, 4): 67, (3, 5): 74, (3,6): 82,
         (4, 4): 93, (4, 5): 100, (4,6): 108
     }
+
     # loop through each group to find group size and find where each group is located on the template
     range_names = []
     for group_index in range(len(group_sizes)):
@@ -136,31 +172,9 @@ def main():
         for letter in columns:
             range_names.append(letter + str(group_location) + ':' + letter + str(group_location + group_size + 1))
 
+    # get groups from template by reading discontinuous cell values
     get_groups_request = service.spreadsheets().values().batchGet(spreadsheetId=template_id, ranges=range_names)
     get_groups_response = get_groups_request.execute()
-
-    # we need to clean up by renaming the first sheet and renaming the spreadsheet itself
-    cleanup_body = {
-        'requests': [
-            {
-                'updateSpreadsheetProperties': {
-                    'properties': {'title': 'League'},
-                    'fields': 'title'
-                }
-            },
-            {
-                'updateSheetProperties': {
-                    'properties': {
-                        'sheetId': 0,
-                        'title': 'Summary',
-                    },
-                    'fields': 'title'
-                }
-            }
-        ]
-    }
-    cleanup_request = service.spreadsheets().batchUpdate(spreadsheetId=new_spreadsheet_id, body=cleanup_body)
-    cleanup_response = cleanup_request.execute()
 
     # place the respective groups onto the summary sheet on the new, empty spreadsheet
     create_groups_body = {
@@ -172,43 +186,6 @@ def main():
     }
     create_groups_request = service.spreadsheets().values().batchUpdate(spreadsheetId=new_spreadsheet_id, body=create_groups_body)
     create_groups_response = create_groups_request.execute()
-    pprint(create_groups_response)
-
-
-    # # now we copy the summary page template to the empty spreadsheet we created
-    # # note: if the sheet that you're trying to copy over references other sheets in its formula, copying may not work
-    # copy_request = service.spreadsheets().sheets().copyTo(spreadsheetId=template_id, sheetId=0, body=destination_body)
-    # copy_response = copy_request.execute()
-    # copied_sheet_id = copy_response['sheetId']
-    #
-    # # we need to clean up and remove the first sheet, rename the copied sheet, and rename the spreadsheet itself
-    # cleanup_body = {
-    #     'requests': [
-    #         {
-    #             'deleteSheet': {
-    #                 'sheetId': 0
-    #             }
-    #         },
-    #         {
-    #             'updateSpreadsheetProperties': {
-    #                 'properties': {'title': 'League'},
-    #                 'fields': 'title'
-    #             }
-    #         },
-    #         {
-    #             'updateSheetProperties': {
-    #                 'properties': {
-    #                     'sheetId': copied_sheet_id,
-    #                     'title': 'Summary',
-    #                 },
-    #                 'fields': 'title'
-    #             }
-    #         }
-    #     ]
-    # }
-    # cleanup_request = service.spreadsheets().batchUpdate(spreadsheetId=new_spreadsheet_id, body=cleanup_body)
-    # cleanup_response = cleanup_request.execute()
-    # pprint(cleanup_response)
 
 if __name__ == '__main__':
     main()
