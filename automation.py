@@ -3,58 +3,89 @@
 
 import xlsxwriter
 
-def groupsInfo():
+class Player:
+    def __init__(self, player_name, player_rating):
+        self.player_name = player_name
+        self.player_rating = player_rating
+
+    def __str__(self):
+        return str(self.player_name) + " (" + str(self.player_rating) + ")"
+
+class Group:
+    def __init__(self, group_num, num_players):
+        self.group_num = group_num
+        self.num_players = num_players
+        self.players = []
+
+    def get_info(self):
+        for i in range(1, self.num_players + 1):
+            player_name = input("Name of person {} in Group {}: ".format(i, self.group_num))
+            player_rating = int(input("Rating of person {} in Group {}: ".format(i, self.group_num)))
+            player_info = Player(player_name=player_name, player_rating=player_rating)
+            self.players.append(player_info)
+            print(str(player_info) + " has been added to Group {}.\n".format(self.group_num))
+
+        self.sort_ratings()
+
+    def sort_ratings(self):
+        self.players = sorted(self.players, key=lambda player_info: player_info.player_rating, reverse=True)
+
+class Groups:
+    def __init__(self, num_groups=0, group_list=[]):
+        self.num_groups = num_groups
+        self.group_list = group_list
+
+    def add_group(self, group):
+        self.group_list.append(group)
+
+def construct_groups():
     while True:
         try:
-            numberOfGroups = int(input('Number of groups: '))
+            num_groups = int(input('Number of groups: '))
         except ValueError:
             print('Please input an integer.')
             continue
-        if numberOfGroups > 4:
+        if num_groups > 4:
             print('There cannot be more than four groups. Try again.')
             continue
         else:
             break
 
-    
-    perGroupNumber = []
-    groupNumber = 1
+    groups = Groups(num_groups=num_groups)
 
-    for x in range(0, numberOfGroups):
+    for x in range(num_groups):
+        group_num = x + 1
+
         while True:
             try:
-                numberOfPeople = int(input('How many people were in Group ' + str(x + 1) + '? '))
+                num_players = int(input('How many people were in Group ' + str(group_num) + '? '))
+                print('\n')
             except ValueError:
                 print('Please input an integer.')
                 continue
-            if numberOfPeople < 4:
+            if num_players < 4:
                 print('There has to be at least four people in a group. Try again.')
                 continue
-            if numberOfPeople > 7:
+            if num_players > 7:
                 print('There cannot be more than seven people in a group. Try again.')
             else:
                 break
-        perGroupNumber.append(numberOfPeople)
 
-    return perGroupNumber
+        groups.add_group(Group(group_num=group_num, num_players=num_players))
 
-
+    return groups
 
 def groupOneInfo(x):
     print("\n\nPlease refer to the current league ratings as you fill this part out.")
     print("\nYou are currently putting in information for Group 1.")
     playerInfo = {}
-    
     for i in range(0, x[0]):
         playerName = input("Name of person in Group 1: ")
         playerRating = int(input("Rating of person in Group 1: "))
         playerInfo[playerName] = playerRating
-        print('\n' + str(playerName) + "(" + str(playerRating) + ") has been added to Group 1.")
-        print('\n')
+        print(str(playerName) + "(" + str(playerRating) + ") has been added to Group 1.\n")
 
     return playerInfo
-
-
 
 def groupTwoInfo(x):
     playerInfo = {}
@@ -70,14 +101,12 @@ def groupTwoInfo(x):
             print('\n')
         return playerInfo
 
-
-        
 def groupThreeInfo(x):
     playerInfo = {}
     if (len(x) < 3):
         return None
     else:
-        print("\nYou are currently putting in informatin for Group 3.")
+        print("\nYou are currently putting in information for Group 3.")
         for i in range(0, x[2]):
             playerName = input("Name of person in Group 3: ")
             playerRating = int(input("Rating of person in Group 3: "))
@@ -86,14 +115,12 @@ def groupThreeInfo(x):
             print('\n')
         return playerInfo
 
-
-
 def groupFourInfo(x):
     playerInfo = {}
     if (len(x) < 4):
         return None
     else:
-        print("\nYou are currently putting in informatin for Group 4.")
+        print("\nYou are currently putting in information for Group 4.")
         for i in range(0, x[3]):
             playerName = input("Name of person in Group 4: ")
             playerRating = int(input("Rating of person in Group 4: "))
@@ -272,7 +299,6 @@ def fourPersonResultFormat(sheet, groupPlayers):
         'valign' : 'vcenter',
         'fg_color' : '#C0C0C0'})
     merge_format1.set_font_size(15)
-    
 
     merge_format2 = workbook.add_format({
         'border' : 1,
@@ -296,14 +322,14 @@ def fourPersonResultFormat(sheet, groupPlayers):
     sheet.write('A19', 'A')
     sheet.write('A20', 'B')
 
-    playerA = groupPlayers[0]
-    playerB = groupPlayers[2]
-    playerC = groupPlayers[4]
-    playerD = groupPlayers[6]
-    playerARating = groupPlayers[1]
-    playerBRating = groupPlayers[3]
-    playerCRating = groupPlayers[5]
-    playerDRating = groupPlayers[7]
+    playerA = groupPlayers.players[0].player_name
+    playerB = groupPlayers.players[1].player_name
+    playerC = groupPlayers.players[2].player_name
+    playerD = groupPlayers.players[3].player_name
+    playerARating = groupPlayers.players[0].player_rating
+    playerBRating = groupPlayers.players[1].player_rating
+    playerCRating = groupPlayers.players[2].player_rating
+    playerDRating = groupPlayers.players[3].player_rating
     
     sheet.write('B4', playerB)
     sheet.write('B5', playerD)
@@ -481,7 +507,6 @@ def fivePersonResultFormat(sheet, groupPlayers):
                             match6, match7, match8, match9, match10))
     resultWriter(matchResultList, sheet)
 
-
     pointChangeList = []
     pointChange1 = ratingCalc(playerARating, playerDRating, higherRatingWins(match1[0]))
     pointChange2 = ratingCalc(playerBRating, playerCRating, higherRatingWins(match2[0]))
@@ -496,7 +521,6 @@ def fivePersonResultFormat(sheet, groupPlayers):
     pointChangeList.extend((pointChange1, pointChange2, pointChange3, pointChange4, pointChange5,
                         pointChange6, pointChange7, pointChange8, pointChange9, pointChange10))
     pointChangeWriter(pointChangeList, sheet)
-
 
     playersTotalChange = []
     playerAChange = pointChange1 + pointChange5 + pointChange7 + pointChange10
@@ -663,7 +687,6 @@ def sixPersonResultFormat(sheet, groupPlayers):
                             match11, match12, match13, match14, match15))
     resultWriter(matchResultList, sheet)
 
-
     pointChangeList = []
     pointChange1 = ratingCalc(playerARating, playerDRating, higherRatingWins(match1[0]))
     pointChange2 = ratingCalc(playerBRating, playerCRating, higherRatingWins(match2[0]))
@@ -684,7 +707,6 @@ def sixPersonResultFormat(sheet, groupPlayers):
                         pointChange6, pointChange7, pointChange8, pointChange9, pointChange10,
                         pointChange11, pointChange12, pointChange13, pointChange14, pointChange15,))
     pointChangeWriter(pointChangeList, sheet)
-
 
     playersTotalChange = []
     playerAChange = pointChange1 + pointChange4 + pointChange9 + pointChange10 + pointChange15
@@ -864,7 +886,6 @@ def sevenPersonResultFormat(sheet, groupPlayers):
     sheet.write('D62', playerFRating)
     sheet.write('D64', playerCRating)
     sheet.write('D65', playerERating)
-    
 
     print('\nPlease input the game scores for the matches.')
     print('\nFor example, assuming B won 3 - 2 for Match B vs D, (3:2) should be inputted, excluding parentheses and spaces.')
@@ -896,7 +917,6 @@ def sevenPersonResultFormat(sheet, groupPlayers):
                             match11, match12, match13, match14, match15,
                             match16, match17, match18, match19, match20, match21))
     resultWriter(matchResultList, sheet)
-
 
     pointChangeList = []
     pointChange1 = ratingCalc(playerARating, playerFRating, higherRatingWins(match1[0]))
@@ -957,7 +977,7 @@ def sheetMerger(groupPlayers, sheet, merge_format1, merge_format2):
     sheet.merge_range('A1:E1', 'Group {Replace This} - Match Record', merge_format1)
     amountOfMerges = 6
     merge = 3
-    amountOfPlayers = len(groupPlayers) / 2
+    amountOfPlayers = groupPlayers.num_players
     if (amountOfPlayers != 4):
         start = 4
         while (amountOfPlayers > start):
@@ -977,20 +997,21 @@ def tableWriter(worksheet, groupSize, groupPlayers, overallRatingChange, seedLet
     regular_fill.set_pattern(1)
     regular_fill.set_bg_color('white')
 
-    for i in range(2, groupSize + 2):
-        ratingAfter = groupPlayers[groupRatingCounter] + overallRatingChange[ratingChangeCounter]
-        worksheet.write(i + spacer, 1, seedLetterList[seedCounter], regular_fill)
-        worksheet.write(i + spacer, 2, groupPlayers[groupNameCounter], regular_fill)
-        worksheet.write(i + spacer, 3, groupPlayers[groupRatingCounter], regular_fill)
-        worksheet.write(i + spacer, 4, ' ', regular_fill)
-        worksheet.write(i + spacer, 5, overallRatingChange[ratingChangeCounter], regular_fill)
-        worksheet.write(i + spacer, 6, ratingAfter, regular_fill)
+    for i in range(groupSize):
+        row_num = i + spacer + 2
+        col_num = i + 1
+        ratingAfter = groupPlayers.players[i].player_rating + overallRatingChange[ratingChangeCounter]
+        worksheet.write(row_num, col_num, seedLetterList[seedCounter], regular_fill)
+        worksheet.write(row_num, col_num, groupPlayers.players[i].player_name, regular_fill)
+        worksheet.write(row_num, col_num, groupPlayers.players[i].player_rating, regular_fill)
+        worksheet.write(row_num, col_num, ' ', regular_fill)
+        worksheet.write(row_num, col_num, overallRatingChange[ratingChangeCounter], regular_fill)
+        worksheet.write(row_num, col_num, ratingAfter, regular_fill)
 
         seedCounter += 1
-        groupNameCounter += 2
-        groupRatingCounter += 2
+        groupNameCounter += 1
+        groupRatingCounter += 1
         ratingChangeCounter += 1
-
 
 def tableMaker(worksheet, spacer, spacerGroupSize, groupNumber):
     group_title = workbook.add_format({
@@ -1012,13 +1033,13 @@ def tableMaker(worksheet, spacer, spacerGroupSize, groupNumber):
     worksheet.write(spacer, 5, 'Rating Change', header_fill)
     worksheet.write(spacer, 6, 'Rating After', header_fill)
 
-def determineFormat(matchRecord, groupPlayers):
-    if (len(groupPlayers) == 8):
-        return fourPersonResultFormat(matchRecord, groupPlayers)
-    if (len(groupPlayers) == 10):
-        return fivePersonResultFormat(matchRecord, groupPlayers)
-    if (len(groupPlayers) == 12):
-        return sixPersonResultFormat(matchRecord, groupPlayers)
+def determineFormat(matchRecord, group):
+    if group.num_players == 4:
+        return fourPersonResultFormat(matchRecord, group)
+    elif group.num_players == 5:
+        return fivePersonResultFormat(matchRecord, group)
+    elif group.num_players == 6:
+        return sixPersonResultFormat(matchRecord, group)
 
 def groupMaker(groupInfo):
     groupList = []
@@ -1026,193 +1047,181 @@ def groupMaker(groupInfo):
         groupList.append(key)
         groupList.append(value)
     return groupList
-        
-print("Basic rules for league at GTTTA:\n")
-print("There can be no more than four groups.")
-print("There can be no more than seven players in any group.")
-print("There can be no less than four people per group.\n")
+
+if __name__ == "__main__":
+    print("Basic rules for league at GTTTA:\n")
+    print("There can be no more than four groups.")
+    print("There can be no more than seven players in any group.")
+    print("There can be no less than four people per group.\n")
+
+    groups = construct_groups()
+    group_list = groups.group_list
+    for group in group_list:
+        group.get_info()
+
+    print('\nWhen asked to trust the source of the workbook, click TRUST.')
+    path = input('\nBefore continuing, please input the name of this file. ')
+
+    workbook = xlsxwriter.Workbook(path)
+    worksheet = workbook.add_worksheet('Summary')
+    worksheet.set_column(1, 1, len('Seed') + 1)
+    worksheet.set_column(2, 2, 15)
+    worksheet.set_column(3, 3, len('Rating Before') - 1)
+    worksheet.set_column(4, 4, len('Matches Won') + 1)
+    worksheet.set_column(5, 5, len('Rating Change'))
+    worksheet.set_column(6, 6, len('Rating After') - 1)
+    seedLetter = ['A','B','C','D','E','F','G']
+
+    if (len(group_list) == 1): # Makes table just for group one
+        group_one = group_list[0]
+
+        matchRecord1 = workbook.add_worksheet('Group 1')
+        overallRatingChange = determineFormat(matchRecord1, group_one)
+
+        tableMaker(worksheet, 1, group_one.num_players + 1, group_one.group_num)
+        tableWriter(worksheet, group_one.num_players, group_one, overallRatingChange, seedLetter, 0)
 
 
+    if (len(group_list) == 2): ##Makes tables just for groups one and two
 
-groupsInfo = groupsInfo()
-groupOneInfo = groupOneInfo(groupsInfo)
-groupTwoInfo = groupTwoInfo(groupsInfo)
-groupThreeInfo = groupThreeInfo(groupsInfo)
-groupFourInfo = groupFourInfo(groupsInfo)
+        groupOnePlayers = groupMaker(groupOneInfo)
+        swapper(groupOnePlayers)
+        swapChecker(groupOnePlayers)
 
+        groupTwoPlayers = groupMaker(groupTwoInfo)
+        swapper(groupTwoPlayers)
+        swapChecker(groupTwoPlayers)
 
-print('\nWhen asked to trust the source of the workbook, click TRUST.')
-path = input('\nBefore continuing, please specify the path directory to which you would like to save your file. ')
+        matchRecord1 = workbook.add_worksheet('Group 1')
+        overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
 
-workbook = xlsxwriter.Workbook(path)
-worksheet = workbook.add_worksheet('Summary')
+        matchRecord2 = workbook.add_worksheet('Group 2')
+        overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
 
+        group1Size = group_list[0]
+        group2Size = group_list[1]
+        groupSizeDifference = abs(group1Size - group2Size)
 
+        #Makes 1st table and inputs basic info
+        tableMaker(worksheet, 1, group1Size + 1, 1)
+        tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
 
+        #Makes 2nd table and inputs basic info
+        spacer = group1Size - groupSizeDifference
 
-worksheet.set_column(1, 1, len('Seed') + 1)
-worksheet.set_column(2, 2, 15)
-worksheet.set_column(3, 3, len('Rating Before') - 1)
-worksheet.set_column(4, 4, len('Matches Won') + 1)
-worksheet.set_column(5, 5, len('Rating Change'))
-worksheet.set_column(6, 6, len('Rating After') - 1)
-seedLetter = ['A','B','C','D','E','F','G']
-
-
-
-if (len(groupsInfo) == 1): ##Makes table just for group one
-
-    groupOnePlayers = groupMaker(groupOneInfo)
-    swapper(groupOnePlayers)
-    swapChecker(groupOnePlayers)
-
-    matchRecord1 = workbook.add_worksheet('Group 1')
-    overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
-
-    tableMaker(worksheet, 1, groupsInfo[0] + 1, 1)
-    tableWriter(worksheet, groupsInfo[0], groupOnePlayers, overallRatingChange, seedLetter, 0)
+        tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
+        tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
 
 
-if (len(groupsInfo) == 2): ##Makes tables just for groups one and two
+    if (len(group_list) == 3): ##Makes tables for groups 1, 2, and 3
 
-    groupOnePlayers = groupMaker(groupOneInfo)
-    swapper(groupOnePlayers)
-    swapChecker(groupOnePlayers)
+        groupOnePlayers = groupMaker(groupOneInfo)
+        swapper(groupOnePlayers)
+        swapChecker(groupOnePlayers)
 
-    groupTwoPlayers = groupMaker(groupTwoInfo)
-    swapper(groupTwoPlayers)
-    swapChecker(groupTwoPlayers)
+        groupTwoPlayers = groupMaker(groupTwoInfo)
+        swapper(groupTwoPlayers)
+        swapChecker(groupTwoPlayers)
 
-    matchRecord1 = workbook.add_worksheet('Group 1')
-    overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
+        groupThreePlayers = groupMaker(groupThreeInfo)
+        swapper(groupThreePlayers)
+        swapChecker(groupThreePlayers)
 
-    matchRecord2 = workbook.add_worksheet('Group 2')
-    overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
+        matchRecord1 = workbook.add_worksheet('Group 1')
+        overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
 
-    group1Size = groupsInfo[0]
-    group2Size = groupsInfo[1]
-    groupSizeDifference = abs(group1Size - group2Size)
+        matchRecord2 = workbook.add_worksheet('Group 2')
+        overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
 
-    #Makes 1st table and inputs basic info
-    tableMaker(worksheet, 1, group1Size + 1, 1)
-    tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
-    
-    #Makes 2nd table and inputs basic info
-    spacer = group1Size - groupSizeDifference
+        matchRecord3 = workbook.add_worksheet('Group 3')
+        overallRatingChange3 = determineFormat(matchRecord1, groupThreePlayers)
 
-    tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
-    tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
-    
+        group1Size = group_list[0]
+        group2Size = group_list[1]
+        group3Size = group_list[2]
+        groupSizeDifference = abs(group1Size - group2Size)
 
-if (len(groupsInfo) == 3): ##Makes tables for groups 1, 2, and 3
+        #Makes 1st table and inputs basic info
+        tableMaker(worksheet, 1, group1Size + 1, 1)
+        tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
 
-    groupOnePlayers = groupMaker(groupOneInfo)
-    swapper(groupOnePlayers)
-    swapChecker(groupOnePlayers)
+        #Makes 2nd table and inputs basic info
+        spacer = group1Size - groupSizeDifference
 
-    groupTwoPlayers = groupMaker(groupTwoInfo)
-    swapper(groupTwoPlayers)
-    swapChecker(groupTwoPlayers)
+        tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
+        tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
 
-    groupThreePlayers = groupMaker(groupThreeInfo)
-    swapper(groupThreePlayers)
-    swapChecker(groupThreePlayers)
+        #Makes 3rd table and inputs basic info
+        spacer3 = group3Size + spacer + group2Size + 2
 
-    matchRecord1 = workbook.add_worksheet('Group 1')
-    overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
-
-    matchRecord2 = workbook.add_worksheet('Group 2')
-    overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
-
-    matchRecord3 = workbook.add_worksheet('Group 3')
-    overallRatingChange3 = determineFormat(matchRecord1, groupThreePlayers)
-    
-    group1Size = groupsInfo[0]
-    group2Size = groupsInfo[1]
-    group3Size = groupsInfo[2]
-    groupSizeDifference = abs(group1Size - group2Size)
-
-    #Makes 1st table and inputs basic info
-    tableMaker(worksheet, 1, group1Size + 1, 1)
-    tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
-    
-    #Makes 2nd table and inputs basic info
-    spacer = group1Size - groupSizeDifference
-    
-    tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
-    tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
-
-    #Makes 3rd table and inputs basic info
-    spacer3 = group3Size + spacer + group2Size + 2
-
-    tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
-    tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
+        tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
+        tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
 
 
-if (len(groupsInfo) == 4): ##Makes tables for all 4 groups
+    if (len(group_list) == 4): ##Makes tables for all 4 groups
 
-    groupOnePlayers = groupMaker(groupOneInfo)
-    swapper(groupOnePlayers)
-    swapChecker(groupOnePlayers)
+        groupOnePlayers = groupMaker(groupOneInfo)
+        swapper(groupOnePlayers)
+        swapChecker(groupOnePlayers)
 
-    groupTwoPlayers = groupMaker(groupTwoInfo)
-    swapper(groupTwoPlayers)
-    swapChecker(groupTwoPlayers)
+        groupTwoPlayers = groupMaker(groupTwoInfo)
+        swapper(groupTwoPlayers)
+        swapChecker(groupTwoPlayers)
 
-    groupThreePlayers = groupMaker(groupThreeInfo)
-    swapper(groupThreePlayers)
-    swapChecker(groupThreePlayers)
+        groupThreePlayers = groupMaker(groupThreeInfo)
+        swapper(groupThreePlayers)
+        swapChecker(groupThreePlayers)
 
-    groupFourPlayers = groupMaker(groupFourInfo)
-    swapper(groupFourPlayers)
-    swapChecker(groupFourPlayers)
-    
-    group1Size = groupsInfo[0]
-    group2Size = groupsInfo[1]
-    group3Size = groupsInfo[2]
-    group4Size = groupsInfo[3]
-    groupSizeDifference = abs(group1Size - group2Size)
+        groupFourPlayers = groupMaker(groupFourInfo)
+        swapper(groupFourPlayers)
+        swapChecker(groupFourPlayers)
 
-    matchRecord1 = workbook.add_worksheet('Group 1')
-    overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
-    
-    matchRecord2 = workbook.add_worksheet('Group 2')
-    overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
+        group1Size = group_list[0]
+        group2Size = group_list[1]
+        group3Size = group_list[2]
+        group4Size = group_list[3]
+        groupSizeDifference = abs(group1Size - group2Size)
 
-    matchRecord3 = workbook.add_worksheet('Group 3')
-    overallRatingChange3 = determineFormat(matchRecord3, groupThreePlayers)
+        matchRecord1 = workbook.add_worksheet('Group 1')
+        overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
 
-    matchRecord4 = workbook.add_worksheet('Group 4')
-    overallRatingChange4 = determineFormat(matchRecord4, groupFourPlayers)
+        matchRecord2 = workbook.add_worksheet('Group 2')
+        overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
 
-    #Makes 1st table and inputs basic info
-    tableMaker(worksheet, 1, group1Size + 1, 1)
-    tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
-    
-    #Makes 2nd table and inputs basic info
-    spacer = group1Size - groupSizeDifference
-    
-    tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
-    tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
+        matchRecord3 = workbook.add_worksheet('Group 3')
+        overallRatingChange3 = determineFormat(matchRecord3, groupThreePlayers)
 
+        matchRecord4 = workbook.add_worksheet('Group 4')
+        overallRatingChange4 = determineFormat(matchRecord4, groupFourPlayers)
 
-    #Makes 3rd table and inputs basic info
-    spacer3 = group3Size + spacer + group2Size + 2
+        #Makes 1st table and inputs basic info
+        tableMaker(worksheet, 1, group1Size + 1, 1)
+        tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
 
-    tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
-    tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
-    
+        #Makes 2nd table and inputs basic info
+        spacer = group1Size - groupSizeDifference
 
-    #Makes 4th table and inputs basic info
-    spacer4 = group4Size + spacer3 + group3Size + 2
-
-    tableMaker(worksheet, spacer4 + 4, spacer4 + group4Size + 4, 4)
-    tableWriter(worksheet, group4Size, groupFourPlayers, overallRatingChange4, seedLetter, spacer4 + 4)
+        tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
+        tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
 
 
-print('\n\n')
-print('NOTE: This only creates an excel file on your computer, when using Google Sheets, you must create a new xlsx file within the directory and import the file.')
-print('\nTake NOTE OF THIS AS WELL! Since the tables do not keep the same format as excel when imported into Google Sheets, you must copy and paste the tables to replace the cells.')
-print('\nDo not forget to also fill out the (Matches Won) category as well, as that is not filled out automatically by this script.')
-print('\nLastly, do not forget to also update the "Current League Ratings" document.')
-workbook.close()
+        #Makes 3rd table and inputs basic info
+        spacer3 = group3Size + spacer + group2Size + 2
+
+        tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
+        tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
+
+
+        #Makes 4th table and inputs basic info
+        spacer4 = group4Size + spacer3 + group3Size + 2
+
+        tableMaker(worksheet, spacer4 + 4, spacer4 + group4Size + 4, 4)
+        tableWriter(worksheet, group4Size, groupFourPlayers, overallRatingChange4, seedLetter, spacer4 + 4)
+
+
+    print('\n\n')
+    print('NOTE: This only creates an excel file on your computer, when using Google Sheets, you must create a new xlsx file within the directory and import the file.')
+    print('\nTake NOTE OF THIS AS WELL! Since the tables do not keep the same format as excel when imported into Google Sheets, you must copy and paste the tables to replace the cells.')
+    print('\nDo not forget to also fill out the (Matches Won) category as well, as that is not filled out automatically by this script.')
+    print('\nLastly, do not forget to also update the "Current League Ratings" document.')
+    workbook.close()
