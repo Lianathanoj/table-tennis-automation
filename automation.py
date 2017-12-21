@@ -1,5 +1,5 @@
-#Author: David Gong
-#Contributor: Jonathan Lian
+# Author: David Gong
+# Contributor: Jonathan Lian
 
 import xlsxwriter
 
@@ -7,6 +7,10 @@ class Player:
     def __init__(self, player_name, player_rating):
         self.player_name = player_name
         self.player_rating = player_rating
+        self.matches_won = 0
+        self.games_won = 0
+        self.rating_change = 0
+        self.final_rating = player_rating
 
     def __str__(self):
         return str(self.player_name) + " (" + str(self.player_rating) + ")"
@@ -176,842 +180,150 @@ def swapChecker(group):
         group[2] = swapName
         group[3] = swapRating
 
+class ResultFormat:
+    def __init__(self, sheet, group):
+        self.sheet = sheet
+        self.group = group
+        self.num_players = group.num_players
+        self.first_row = 4
+        self.last_row_selection = {4: 20, 5: 33, 6: 48, 7: 66}
+        self.match_ordering_selection = {4: ['B:D', 'A:C', 'B:C', 'A:D', 'C:D', 'A:B'],
+                                         5: ['A:D', 'B:C', 'B:E', 'C:D', 'A:E', 'B:D', 'A:C', 'D:E', 'C:E', 'A:B'],
+                                         6: ['A:D', 'B:C', 'E:F', 'A:E', 'B:D', 'C:F', 'B:F', 'D:E', 'A:C', 'A:F',
+                                             'B:E', 'C:D', 'C:E', 'D:F', 'A:B'],
+                                         7: ['A:F', 'B:E', 'C:D', 'B:G', 'C:F', 'D:E', 'A:E', 'B:D', 'C:G', 'A:C',
+                                             'D:F', 'E:G', 'F:G', 'A:D', 'B:C', 'A:B', 'E:F', 'D:G', 'A:G', 'B:F',
+                                             'C:E']}
+        self.letter_dict = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
+        self.last_row = self.last_row_selection[self.num_players]
+        self.match_ordering = self.match_ordering_selection[self.num_players]
 
-def ratingCalc(higherRating, lowerRating, higherRatingWins):
-    difference = higherRating - lowerRating
-    pointChange = 0
-    if higherRatingWins == True:
-        if difference < 13:
-            pointChange = 8
-            higherRating += 8
-            lowerRating -= 8
-        if (difference >= 13 and difference < 38):
-            pointChange = 7
-            higherRating += 7
-            lowerRating -= 7
-        if (difference >= 38 and difference < 63):
-            pointChange = 6
-            higherRating += 6
-            lowerRating -= 6
-        if (difference >= 63 and difference < 88):
-            pointChange = 5
-            higherRating += 5
-            lowerRating -= 5
-        if (difference >= 88 and difference < 113):
-            pointChange = 4
-            higherRating += 4
-            lowerRating -= 4
-        if (difference >= 113 and difference < 138):
-            pointChange = 3
-            higherRating += 3
-            lowerRating -= 3
-        if (difference >= 138 and difference < 163):
-            pointChange = 2
-            higherRating += 2
-            lowerRating -= 2
-        if (difference >= 163 and difference < 188):
-            pointChange = 2
-            higherRating += 2
-            lowerRating -= 2
-        if (difference >= 188 and difference < 213):
-            pointChange = 1
-            higherRating += 1
-            lowerRating -= 1
-        if (difference >= 213 and difference < 238):
-            pointChange = 1
-            higherRating += 1
-            lowerRating -= 1
-        if (difference >= 238):
-            pointChange = 0
-            higherRating += 0
-            lowerRating -= 0
-    if higherRatingWins == False:
-        if (difference < 13):
-            pointChange = -8
-            higherRating -= 8
-            lowerRating += 8
-        if (difference >= 13 and difference < 38):
-            pointChange = -10
-            higherRating -= 10
-            lowerRating += 10
-        if (difference >= 38 and difference < 63):
-            pointChange = -13
-            higherRating -= 13
-            lowerRating += 13
-        if (difference >= 63 and difference < 88):
-            pointChange = -16
-            higherRating -= 16
-            lowerRating += 16
-        if (difference >= 88 and difference < 113):
-            pointChange = -20
-            higherRating -= 20
-            lowerRating += 20
-        if (difference >= 113 and difference < 138):
-            pointChange = -25
-            higherRating -= 25
-            lowerRating += 25
-        if (difference >= 138 and difference < 163):
-            pointChange = -30
-            higherRating -= 30
-            lowerRating += 30
-        if (difference >= 163 and difference < 188):
-            pointChange = -35
-            higherRating -= 35
-            lowerRating += 35
-        if (difference >= 188 and difference < 213):
-            pointChange = -40
-            higherRating -= 40
-            lowerRating += 40
-        if (difference >= 213 and difference < 238):
-            pointChange = -45
-            higherRating -= 45
-            lowerRating += 45
-        if (difference >= 238):
-            pointChange = -50
-            higherRating -= 50
-            lowerRating += 50
+    def higher_rating_is_winner(self, match):
+        games_won = match[0]
+        games_lost = match[2]
 
-    return pointChange
+        return games_won > games_lost
 
-def higherRatingWins(gameScore):
-    if int(gameScore) < 3:
-        return False
-    else:
-        return True
+    def rating_calc(self, higher_rating, lower_rating, higher_rating_is_winner):
+        difference = higher_rating - lower_rating
+        rating_increment = 25
+        min_rating_threshold = 13
+        max_rating_threshold = min_rating_threshold + rating_increment * 9 + 1
 
-def headerWriter(sheet):
-    sheet.write('A2', 'Match')
-    sheet.write('B2', 'Players')
-    sheet.write('C2', 'Score')
-    sheet.write('D2', 'Rating Before')
-    sheet.write('E2', 'Point Change')
+        if higher_rating_is_winner:
+            point_change = 8
+            if 138 <= difference < 188:
+                return 2
+            elif 188 <= difference < 238:
+                return 1
+            elif difference >= 238:
+                return 0
+            for difference_threshold in range(min_rating_threshold, 139, rating_increment):
+                if difference < difference_threshold:
+                    return point_change
+                else:
+                    point_change -= 1
+        else:
+            point_change = -20
+            if difference < 13:
+                return -8
+            elif 13 <= difference < 37:
+                return -10
+            elif 38 <= difference < 63:
+                return -13
+            elif 63 <= difference < 88:
+                return -16
+            for difference_threshold in range(113, max_rating_threshold, rating_increment):
+                if difference < difference_threshold:
+                    return point_change
+                else:
+                    point_change -= 5
 
-def fourPersonResultFormat(sheet, groupPlayers):
-    
-    sheet.add_table('A2:E20',{'autofilter': False})
-    sheet.set_column(1, 1, 15)
-    sheet.set_column(3, 3, len('Rating Before') - 1)
-    sheet.set_column(4, 4, len('Point Change'))
+        return point_change
 
-    merge_format1 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
-    merge_format1.set_font_size(15)
+    def sheet_merger(self):
+        merge_format1 = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'fg_color': '#C0C0C0'})
+        merge_format1.set_font_size(15)
 
-    merge_format2 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
+        merge_format2 = workbook.add_format({
+            'border': 1,
+            'align': 'center',
+            'valign': 'vcenter',
+            'fg_color': '#C0C0C0'})
 
-    sheetMerger(groupPlayers, sheet, merge_format1, merge_format2)
-    headerWriter(sheet)
+        self.sheet.merge_range('A1:E1', 'Group {Replace This} - Match Record', merge_format1)
 
-    sheet.write('A4', 'B')
-    sheet.write('A5', 'D')
-    sheet.write('A7', 'A')
-    sheet.write('A8', 'C')
-    sheet.write('A10', 'B')
-    sheet.write('A11', 'C')
-    sheet.write('A13', 'A')
-    sheet.write('A14', 'D')
-    sheet.write('A16', 'C')
-    sheet.write('A17', 'D')
-    sheet.write('A19', 'A')
-    sheet.write('A20', 'B')
+        num_merges = 6
+        merge = 3
+        if self.num_players != 4:
+            start = 4
+            while self.num_players > start:
+                num_merges += 5
+                start += 1
+        for _ in range(num_merges):
+            self.sheet.merge_range('A' + str(merge) + ':E' + str(merge), ' ', merge_format2)
+            merge += 3
 
-    playerA = groupPlayers.players[0].player_name
-    playerB = groupPlayers.players[1].player_name
-    playerC = groupPlayers.players[2].player_name
-    playerD = groupPlayers.players[3].player_name
-    playerARating = groupPlayers.players[0].player_rating
-    playerBRating = groupPlayers.players[1].player_rating
-    playerCRating = groupPlayers.players[2].player_rating
-    playerDRating = groupPlayers.players[3].player_rating
-    
-    sheet.write('B4', playerB)
-    sheet.write('B5', playerD)
-    sheet.write('B7', playerA)
-    sheet.write('B8', playerC)
-    sheet.write('B10', playerB)
-    sheet.write('B11', playerC)
-    sheet.write('B13', playerA)
-    sheet.write('B14', playerD)
-    sheet.write('B16', playerC)
-    sheet.write('B17', playerD)
-    sheet.write('B19', playerA)
-    sheet.write('B20', playerB)
+    def header_writer(self):
+        self.sheet.write('A2', 'Match')
+        self.sheet.write('B2', 'Players')
+        self.sheet.write('C2', 'Score')
+        self.sheet.write('D2', 'Rating Before')
+        self.sheet.write('E2', 'Point Change')
 
-    print('\nPlease input the game scores for the matches.')
-    print('\nFor example, assuming B won 3 - 2 for Match B vs D, (3:2) should be inputted, excluding parentheses and spaces.')
-    print('In the case of B losing to D 2-3, input (2:3) excluding the parentheses and spaces.\n')
-    matchResultList = []
-    match1 = input('B vs D: ')
-    match2 = input('A vs C: ')
-    match3 = input('B vs C: ')
-    match4 = input('A vs D: ')
-    match5 = input('C vs D: ')
-    match6 = input('A vs B: ')
-    matchResultList.extend((match1, match2, match3, match4, match5, match6))
-    resultWriter(matchResultList, sheet)
+    def construct_sheet(self):
+        self.sheet_merger()
+        self.header_writer()
 
-    sheet.write('D4', playerBRating)
-    sheet.write('D5', playerDRating)
-    sheet.write('D7', playerARating)
-    sheet.write('D8', playerCRating)
-    sheet.write('D10', playerBRating)
-    sheet.write('D11', playerCRating)
-    sheet.write('D13', playerARating)
-    sheet.write('D14', playerDRating)
-    sheet.write('D16', playerCRating)
-    sheet.write('D17', playerDRating)
-    sheet.write('D19', playerARating)
-    sheet.write('D20', playerBRating)
+        print('\nPlease input the game scores for the matches.')
+        print('\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2')
+        print('In the case of B losing to D 2-3, input 2:3\n')
 
-    pointChangeList = []
-    pointChange1 = ratingCalc(playerBRating, playerDRating, higherRatingWins(match1[0]))
-    pointChange2 = ratingCalc(playerARating, playerCRating, higherRatingWins(match2[0]))
-    pointChange3 = ratingCalc(playerBRating, playerCRating, higherRatingWins(match3[0]))
-    pointChange4 = ratingCalc(playerARating, playerDRating, higherRatingWins(match4[0]))
-    pointChange5 = ratingCalc(playerCRating, playerDRating, higherRatingWins(match5[0]))
-    pointChange6 = ratingCalc(playerARating, playerBRating, higherRatingWins(match6[0]))
-    pointChangeList.extend((pointChange1, pointChange2, pointChange3,
-                            pointChange4, pointChange5, pointChange6))
-    pointChangeWriter(pointChangeList, sheet)
+        for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
+            player_one_letter = self.match_ordering[index][0]
+            player_two_letter = self.match_ordering[index][2]
+            player_one = self.group.players[self.letter_dict[player_one_letter]]
+            player_two = self.group.players[self.letter_dict[player_two_letter]]
+            match = input(self.match_ordering[index][0] + " versus " + self.match_ordering[index][2] + ": ")
+            point_change = self.rating_calc(player_one.player_rating,
+                                            player_two.player_rating,
+                                            self.higher_rating_is_winner(match))
 
-    playersTotalChange = []
-    playerAChange = pointChange2 + pointChange4 + pointChange6
-    playerBChange = pointChange1 + pointChange3 + -(pointChange6)
-    playerCChange = -(pointChange2) + -(pointChange3) + pointChange5
-    playerDChange = -(pointChange1) + -(pointChange4) + -(pointChange5)
-    playersTotalChange.extend((playerAChange, playerBChange, playerCChange, playerDChange))
+            self.sheet.write('A' + str(row_num), player_one_letter)
+            self.sheet.write('B' + str(row_num), player_one.player_name)
+            self.sheet.write('C' + str(row_num), match[0])
+            self.sheet.write('D' + str(row_num), player_one.player_rating)
+            self.sheet.write('E' + str(row_num), point_change)
 
-    return playersTotalChange
+            self.sheet.write('A' + str(row_num + 1), player_two_letter)
+            self.sheet.write('B' + str(row_num + 1), player_two.player_name)
+            self.sheet.write('C' + str(row_num + 1), match[2])
+            self.sheet.write('D' + str(row_num + 1), player_two.player_rating)
+            self.sheet.write('E' + str(row_num + 1), -point_change)
 
-def fivePersonResultFormat(sheet, groupPlayers):
-    
-    sheet.add_table('A2:E33',{'autofilter': False})
-    sheet.set_column(1, 1, 15)
-    sheet.set_column(3, 3, len('Rating Before') - 1)
-    sheet.set_column(4, 4, len('Point Change'))
+            player_one.final_rating += point_change
+            player_one.rating_change += point_change
+            player_two.final_rating -= point_change
+            player_two.rating_change -= point_change
 
-    merge_format1 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
-    merge_format1.set_font_size(15)
-    
-
-    merge_format2 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
-
-    sheetMerger(groupPlayers, sheet, merge_format1, merge_format2)
-
-    headerWriter(sheet)
-
-    sheet.write('A4', 'A')
-    sheet.write('A5', 'D')
-    sheet.write('A7', 'B')
-    sheet.write('A8', 'C')
-    sheet.write('A10', 'B')
-    sheet.write('A11', 'E')
-    sheet.write('A13', 'C')
-    sheet.write('A14', 'D')
-    sheet.write('A16', 'A')
-    sheet.write('A17', 'E')
-    sheet.write('A19', 'B')
-    sheet.write('A20', 'D')
-    sheet.write('A22', 'A')
-    sheet.write('A23', 'C')
-    sheet.write('A25', 'D')
-    sheet.write('A26', 'E')
-    sheet.write('A28', 'C')
-    sheet.write('A29', 'E')
-    sheet.write('A31', 'A')
-    sheet.write('A32', 'B')
-
-    playerA = groupPlayers[0]
-    playerB = groupPlayers[2]
-    playerC = groupPlayers[4]
-    playerD = groupPlayers[6]
-    playerE = groupPlayers[8]
-    playerARating = groupPlayers[1]
-    playerBRating = groupPlayers[3]
-    playerCRating = groupPlayers[5]
-    playerDRating = groupPlayers[7]
-    playerERating = groupPlayers[9]
-    
-    sheet.write('B4', playerA)
-    sheet.write('B5', playerD)
-    sheet.write('B7', playerB)
-    sheet.write('B8', playerC)
-    sheet.write('B10', playerB)
-    sheet.write('B11', playerE)
-    sheet.write('B13', playerC)
-    sheet.write('B14', playerD)
-    sheet.write('B16', playerA)
-    sheet.write('B17', playerE)
-    sheet.write('B19', playerB)
-    sheet.write('B20', playerD)
-    sheet.write('B22', playerA)
-    sheet.write('B23', playerC)
-    sheet.write('B25', playerD)
-    sheet.write('B26', playerE)
-    sheet.write('B28', playerC)
-    sheet.write('B29', playerE)
-    sheet.write('B31', playerA)
-    sheet.write('B32', playerB)
-
-    sheet.write('D4', playerARating)
-    sheet.write('D5', playerDRating)
-    sheet.write('D7', playerBRating)
-    sheet.write('D8', playerCRating)
-    sheet.write('D10', playerBRating)
-    sheet.write('D11', playerERating)
-    sheet.write('D13', playerCRating)
-    sheet.write('D14', playerDRating)
-    sheet.write('D16', playerARating)
-    sheet.write('D17', playerERating)
-    sheet.write('D19', playerBRating)
-    sheet.write('D20', playerDRating)
-    sheet.write('D22', playerARating)
-    sheet.write('D23', playerCRating)
-    sheet.write('D25', playerDRating)
-    sheet.write('D26', playerERating)
-    sheet.write('D28', playerCRating)
-    sheet.write('D29', playerERating)
-    sheet.write('D31', playerARating)
-    sheet.write('D32', playerBRating)
-
-    print('\nPlease input the game scores for the matches.')
-    print('\nFor example, assuming B won 3 - 2 for Match B vs D, 3:2 or 3-2 should be inputted.')
-    print('In the case of B losing to D 2 - 3, input 2:3 or 2-3.\n')
-    matchResultList = []
-    match1 = input('A vs D: ')
-    match2 = input('B vs C: ')
-    match3 = input('B vs E: ')
-    match4 = input('C vs D: ')
-    match5 = input('A vs E: ')
-    match6 = input('B vs D: ')
-    match7 = input('A vs C: ')
-    match8 = input('D vs E: ')
-    match9 = input('C vs E: ')
-    match10 = input('A vs B: ')
-    matchResultList.extend((match1, match2, match3, match4, match5,
-                            match6, match7, match8, match9, match10))
-    resultWriter(matchResultList, sheet)
-
-    pointChangeList = []
-    pointChange1 = ratingCalc(playerARating, playerDRating, higherRatingWins(match1[0]))
-    pointChange2 = ratingCalc(playerBRating, playerCRating, higherRatingWins(match2[0]))
-    pointChange3 = ratingCalc(playerBRating, playerERating, higherRatingWins(match3[0]))
-    pointChange4 = ratingCalc(playerCRating, playerDRating, higherRatingWins(match4[0]))
-    pointChange5 = ratingCalc(playerARating, playerERating, higherRatingWins(match5[0]))
-    pointChange6 = ratingCalc(playerBRating, playerDRating, higherRatingWins(match6[0]))
-    pointChange7 = ratingCalc(playerARating, playerCRating, higherRatingWins(match7[0]))
-    pointChange8 = ratingCalc(playerDRating, playerERating, higherRatingWins(match8[0]))
-    pointChange9 = ratingCalc(playerCRating, playerERating, higherRatingWins(match9[0]))
-    pointChange10 = ratingCalc(playerARating, playerBRating, higherRatingWins(match10[0]))
-    pointChangeList.extend((pointChange1, pointChange2, pointChange3, pointChange4, pointChange5,
-                        pointChange6, pointChange7, pointChange8, pointChange9, pointChange10))
-    pointChangeWriter(pointChangeList, sheet)
-
-    playersTotalChange = []
-    playerAChange = pointChange1 + pointChange5 + pointChange7 + pointChange10
-    playerBChange = pointChange2 + pointChange3 + pointChange6 + -(pointChange10)
-    playerCChange = -(pointChange2) + pointChange4 + -(pointChange7) + pointChange9
-    playerDChange = -(pointChange1) + -(pointChange4) + -(pointChange6) + pointChange8
-    playerEChange = -(pointChange3) + -(pointChange5) + -(pointChange8) + -(pointChange9)
-    playersTotalChange.extend((playerAChange, playerBChange, playerCChange, playerDChange, playerEChange))
-
-    return playersTotalChange
-
-def sixPersonResultFormat(sheet, groupPlayers):
-    
-    sheet.add_table('A2:E48',{'autofilter': False})
-    sheet.set_column(1, 1, 15)
-    sheet.set_column(3, 3, len('Rating Before') - 1)
-    sheet.set_column(4, 4, len('Point Change'))
-
-    merge_format1 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
-    merge_format1.set_font_size(15)
-    
-
-    merge_format2 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
-
-    sheetMerger(groupPlayers, sheet, merge_format1, merge_format2)
-    headerWriter(sheet)
-
-    sheet.write('A4', 'A')
-    sheet.write('A5', 'D')
-    sheet.write('A7', 'B')
-    sheet.write('A8', 'C')
-    sheet.write('A10', 'E')
-    sheet.write('A11', 'F')
-    sheet.write('A13', 'A')
-    sheet.write('A14', 'E')
-    sheet.write('A16', 'B')
-    sheet.write('A17', 'D')
-    sheet.write('A19', 'C')
-    sheet.write('A20', 'F')
-    sheet.write('A22', 'B')
-    sheet.write('A23', 'F')
-    sheet.write('A25', 'D')
-    sheet.write('A26', 'E')
-    sheet.write('A28', 'A')
-    sheet.write('A29', 'C')
-    sheet.write('A31', 'A')
-    sheet.write('A32', 'F')
-    sheet.write('A34', 'B')
-    sheet.write('A35', 'E')
-    sheet.write('A37', 'C')
-    sheet.write('A38', 'D')
-    sheet.write('A40', 'C')
-    sheet.write('A41', 'E')
-    sheet.write('A43', 'D')
-    sheet.write('A44', 'F')
-    sheet.write('A46', 'A')
-    sheet.write('A47', 'B')
-
-    playerA = groupPlayers[0]
-    playerB = groupPlayers[2]
-    playerC = groupPlayers[4]
-    playerD = groupPlayers[6]
-    playerE = groupPlayers[8]
-    playerF = groupPlayers[10]
-    playerARating = groupPlayers[1]
-    playerBRating = groupPlayers[3]
-    playerCRating = groupPlayers[5]
-    playerDRating = groupPlayers[7]
-    playerERating = groupPlayers[9]
-    playerFRating = groupPlayers[11]
-    
-    sheet.write('B4', playerA)
-    sheet.write('B5', playerD)
-    sheet.write('B7', playerB)
-    sheet.write('B8', playerC)
-    sheet.write('B10', playerE)
-    sheet.write('B11', playerF)
-    sheet.write('B13', playerA)
-    sheet.write('B14', playerE)
-    sheet.write('B16', playerB)
-    sheet.write('B17', playerD)
-    sheet.write('B19', playerC)
-    sheet.write('B20', playerF)
-    sheet.write('B22', playerB)
-    sheet.write('B23', playerF)
-    sheet.write('B25', playerD)
-    sheet.write('B26', playerE)
-    sheet.write('B28', playerA)
-    sheet.write('B29', playerC)
-    sheet.write('B31', playerA)
-    sheet.write('B32', playerF)
-    sheet.write('B34', playerB)
-    sheet.write('B35', playerE)
-    sheet.write('B37', playerC)
-    sheet.write('B38', playerD)
-    sheet.write('B40', playerC)
-    sheet.write('B41', playerE)
-    sheet.write('B43', playerD)
-    sheet.write('B44', playerF)
-    sheet.write('B46', playerA)
-    sheet.write('B47', playerB)
-
-    sheet.write('D4', playerARating)
-    sheet.write('D5', playerDRating)
-    sheet.write('D7', playerBRating)
-    sheet.write('D8', playerCRating)
-    sheet.write('D10', playerERating)
-    sheet.write('D11', playerFRating)
-    sheet.write('D13', playerARating)
-    sheet.write('D14', playerERating)
-    sheet.write('D16', playerBRating)
-    sheet.write('D17', playerDRating)
-    sheet.write('D19', playerCRating)
-    sheet.write('D20', playerFRating)
-    sheet.write('D22', playerBRating)
-    sheet.write('D23', playerFRating)
-    sheet.write('D25', playerDRating)
-    sheet.write('D26', playerERating)
-    sheet.write('D28', playerARating)
-    sheet.write('D29', playerCRating)
-    sheet.write('D31', playerARating)
-    sheet.write('D32', playerFRating)
-    sheet.write('D34', playerBRating)
-    sheet.write('D35', playerERating)
-    sheet.write('D37', playerCRating)
-    sheet.write('D38', playerDRating)
-    sheet.write('D40', playerCRating)
-    sheet.write('D41', playerERating)
-    sheet.write('D43', playerDRating)
-    sheet.write('D44', playerFRating)
-    sheet.write('D46', playerARating)
-    sheet.write('D47', playerBRating)
-    
-
-    print('\nPlease input the game scores for the matches.')
-    print('\nFor example, assuming B won 3 - 2 for Match B vs D, (3:2) should be inputted, excluding parentheses and spaces.')
-    print('In the case of B losing to D 2-3, input (2:3) excluding the parentheses and spaces.\n')
-    matchResultList = []
-    match1 = input('A vs D: ')
-    match2 = input('B vs C: ')
-    match3 = input('E vs F: ')
-    match4 = input('A vs E: ')
-    match5 = input('B vs D: ')
-    match6 = input('C vs F: ')
-    match7 = input('B vs F: ')
-    match8 = input('D vs E: ')
-    match9 = input('A vs C: ')
-    match10 = input('A vs F: ')
-    match11 = input('B vs E: ')
-    match12 = input('C vs D: ')
-    match13 = input('C vs E: ')
-    match14 = input('D vs F: ')
-    match15 = input('A vs B: ')
-    matchResultList.extend((match1, match2, match3, match4, match5,
-                            match6, match7, match8, match9, match10,
-                            match11, match12, match13, match14, match15))
-    resultWriter(matchResultList, sheet)
-
-    pointChangeList = []
-    pointChange1 = ratingCalc(playerARating, playerDRating, higherRatingWins(match1[0]))
-    pointChange2 = ratingCalc(playerBRating, playerCRating, higherRatingWins(match2[0]))
-    pointChange3 = ratingCalc(playerERating, playerFRating, higherRatingWins(match3[0]))
-    pointChange4 = ratingCalc(playerARating, playerERating, higherRatingWins(match4[0]))
-    pointChange5 = ratingCalc(playerBRating, playerDRating, higherRatingWins(match5[0]))
-    pointChange6 = ratingCalc(playerCRating, playerFRating, higherRatingWins(match6[0]))
-    pointChange7 = ratingCalc(playerBRating, playerERating, higherRatingWins(match7[0]))
-    pointChange8 = ratingCalc(playerDRating, playerERating, higherRatingWins(match8[0]))
-    pointChange9 = ratingCalc(playerARating, playerCRating, higherRatingWins(match9[0]))
-    pointChange10 = ratingCalc(playerARating, playerFRating, higherRatingWins(match10[0]))
-    pointChange11 = ratingCalc(playerBRating, playerERating, higherRatingWins(match11[0]))
-    pointChange12 = ratingCalc(playerCRating, playerDRating, higherRatingWins(match12[0]))
-    pointChange13 = ratingCalc(playerCRating, playerERating, higherRatingWins(match13[0]))
-    pointChange14 = ratingCalc(playerDRating, playerFRating, higherRatingWins(match14[0]))
-    pointChange15 = ratingCalc(playerARating, playerBRating, higherRatingWins(match15[0]))
-    pointChangeList.extend((pointChange1, pointChange2, pointChange3, pointChange4, pointChange5,
-                        pointChange6, pointChange7, pointChange8, pointChange9, pointChange10,
-                        pointChange11, pointChange12, pointChange13, pointChange14, pointChange15,))
-    pointChangeWriter(pointChangeList, sheet)
-
-    playersTotalChange = []
-    playerAChange = pointChange1 + pointChange4 + pointChange9 + pointChange10 + pointChange15
-    playerBChange = pointChange2 + pointChange5 + pointChange7 + pointChange11 + -(pointChange15)
-    playerCChange = -(pointChange2) + pointChange6 + -(pointChange9) + pointChange12 + pointChange13
-    playerDChange = -(pointChange1) + -(pointChange5) + pointChange8 + -(pointChange12) + pointChange14
-    playerEChange = pointChange3 + -(pointChange4) + -(pointChange8) + -(pointChange11) + -(pointChange13)
-    playerFChange = -(pointChange3) + -(pointChange6) + -(pointChange7) + -(pointChange10) + -(pointChange14)
-    playersTotalChange.extend((playerAChange, playerBChange, playerCChange, playerDChange, playerEChange, playerFChange))
-
-    return playersTotalChange
-
-def sevenPersonResultFormat(sheet, groupPlayers):
-    
-    sheet.add_table('A2:E66',{'autofilter': False})
-    sheet.set_column(1, 1, 15)
-    sheet.set_column(3, 3, len('Rating Before') - 1)
-    sheet.set_column(4, 4, len('Point Change'))
-
-    merge_format1 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
-    merge_format1.set_font_size(15)
-    
-
-    merge_format2 = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color' : '#C0C0C0'})
-
-    sheetMerger(groupPlayers, sheet, merge_format1, merge_format2)
-    headerWriter(sheet)
-
-    sheet.write('A4', 'A')
-    sheet.write('A5', 'F')
-    sheet.write('A7', 'B')
-    sheet.write('A8', 'E')
-    sheet.write('A10', 'C')
-    sheet.write('A11', 'D')
-    sheet.write('A13', 'B')
-    sheet.write('A14', 'G')
-    sheet.write('A16', 'C')
-    sheet.write('A17', 'F')
-    sheet.write('A19', 'D')
-    sheet.write('A20', 'E')
-    sheet.write('A22', 'A')
-    sheet.write('A23', 'E')
-    sheet.write('A25', 'B')
-    sheet.write('A26', 'D')
-    sheet.write('A28', 'C')
-    sheet.write('A29', 'G')
-    sheet.write('A31', 'A')
-    sheet.write('A32', 'C')
-    sheet.write('A34', 'D')
-    sheet.write('A35', 'F')
-    sheet.write('A37', 'E')
-    sheet.write('A38', 'G')
-    sheet.write('A40', 'F')
-    sheet.write('A41', 'G')
-    sheet.write('A43', 'A')
-    sheet.write('A44', 'D')
-    sheet.write('A46', 'B')
-    sheet.write('A47', 'C')
-    sheet.write('A49', 'A')
-    sheet.write('A50', 'B')
-    sheet.write('A52', 'E')
-    sheet.write('A53', 'F')
-    sheet.write('A55', 'D')
-    sheet.write('A56', 'G')
-    sheet.write('A58', 'A')
-    sheet.write('A59', 'G')
-    sheet.write('A61', 'B')
-    sheet.write('A62', 'F')
-    sheet.write('A64', 'C')
-    sheet.write('A65', 'E')
-
-    playerA = groupPlayers[0]
-    playerB = groupPlayers[2]
-    playerC = groupPlayers[4]
-    playerD = groupPlayers[6]
-    playerE = groupPlayers[8]
-    playerF = groupPlayers[10]
-    playerG = groupPlayers[12]
-    playerARating = groupPlayers[1]
-    playerBRating = groupPlayers[3]
-    playerCRating = groupPlayers[5]
-    playerDRating = groupPlayers[7]
-    playerERating = groupPlayers[9]
-    playerFRating = groupPlayers[11]
-    playerGRating = groupPlayers[13]
-    
-    sheet.write('B4', playerA)
-    sheet.write('B5', playerF)
-    sheet.write('B7', playerB)
-    sheet.write('B8', playerE)
-    sheet.write('B10', playerC)
-    sheet.write('B11', playerD)
-    sheet.write('B13', playerB)
-    sheet.write('B14', playerG)
-    sheet.write('B16', playerC)
-    sheet.write('B17', playerF)
-    sheet.write('B19', playerD)
-    sheet.write('B20', playerE)
-    sheet.write('B22', playerA)
-    sheet.write('B23', playerE)
-    sheet.write('B25', playerB)
-    sheet.write('B26', playerD)
-    sheet.write('B28', playerC)
-    sheet.write('B29', playerG)
-    sheet.write('B31', playerA)
-    sheet.write('B32', playerC)
-    sheet.write('B34', playerD)
-    sheet.write('B35', playerF)
-    sheet.write('B37', playerE)
-    sheet.write('B38', playerG)
-    sheet.write('B40', playerF)
-    sheet.write('B41', playerG)
-    sheet.write('B43', playerA)
-    sheet.write('B44', playerD)
-    sheet.write('B46', playerB)
-    sheet.write('B47', playerC)
-    sheet.write('B49', playerA)
-    sheet.write('B50', playerB)
-    sheet.write('B52', playerE)
-    sheet.write('B53', playerF)
-    sheet.write('B55', playerD)
-    sheet.write('B56', playerG)
-    sheet.write('B58', playerA)
-    sheet.write('B59', playerG)
-    sheet.write('B61', playerB)
-    sheet.write('B62', playerF)
-    sheet.write('B64', playerC)
-    sheet.write('B65', playerE)
-
-    sheet.write('D4', playerARating)
-    sheet.write('D5', playerFRating)
-    sheet.write('D7', playerBRating)
-    sheet.write('D8', playerERating)
-    sheet.write('D10', playerCRating)
-    sheet.write('D11', playerDRating)
-    sheet.write('D13', playerBRating)
-    sheet.write('D14', playerGRating)
-    sheet.write('D16', playerCRating)
-    sheet.write('D17', playerFRating)
-    sheet.write('D19', playerDRating)
-    sheet.write('D20', playerERating)
-    sheet.write('D22', playerARating)
-    sheet.write('D23', playerERating)
-    sheet.write('D25', playerBRating)
-    sheet.write('D26', playerDRating)
-    sheet.write('D28', playerCRating)
-    sheet.write('D29', playerGRating)
-    sheet.write('D31', playerARating)
-    sheet.write('D32', playerCRating)
-    sheet.write('D34', playerDRating)
-    sheet.write('D35', playerFRating)
-    sheet.write('D37', playerERating)
-    sheet.write('D38', playerGRating)
-    sheet.write('D40', playerFRating)
-    sheet.write('D41', playerGRating)
-    sheet.write('D43', playerARating)
-    sheet.write('D44', playerDRating)
-    sheet.write('D46', playerBRating)
-    sheet.write('D47', playerCRating)
-    sheet.write('D49', playerARating)
-    sheet.write('D50', playerBRating)
-    sheet.write('D52', playerERating)
-    sheet.write('D53', playerFRating)
-    sheet.write('D55', playerDRating)
-    sheet.write('D56', playerGRating)
-    sheet.write('D58', playerARating)
-    sheet.write('D59', playerGRating)
-    sheet.write('D61', playerBRating)
-    sheet.write('D62', playerFRating)
-    sheet.write('D64', playerCRating)
-    sheet.write('D65', playerERating)
-
-    print('\nPlease input the game scores for the matches.')
-    print('\nFor example, assuming B won 3 - 2 for Match B vs D, (3:2) should be inputted, excluding parentheses and spaces.')
-    print('In the case of B losing to D 2-3, input (2:3) excluding the parentheses and spaces.\n')
-    matchResultList = []
-    match1 = input('A vs F: ')
-    match2 = input('B vs E: ')
-    match3 = input('C vs D: ')
-    match4 = input('B vs G: ')
-    match5 = input('C vs F: ')
-    match6 = input('D vs E: ')
-    match7 = input('A vs E: ')
-    match8 = input('B vs D: ')
-    match9 = input('C vs G: ')
-    match10 = input('A vs C: ')
-    match11 = input('D vs F: ')
-    match12 = input('E vs G: ')
-    match13 = input('F vs G: ')
-    match14 = input('A vs D: ')
-    match15 = input('B vs C: ')
-    match16 = input('A vs B: ')
-    match17 = input('E vs F: ')
-    match18 = input('D vs G: ')
-    match19 = input('A vs G: ')
-    match20 = input('B vs F: ')
-    match21 = input('C vs E: ')
-    matchResultList.extend((match1, match2, match3, match4, match5,
-                            match6, match7, match8, match9, match10,
-                            match11, match12, match13, match14, match15,
-                            match16, match17, match18, match19, match20, match21))
-    resultWriter(matchResultList, sheet)
-
-    pointChangeList = []
-    pointChange1 = ratingCalc(playerARating, playerFRating, higherRatingWins(match1[0]))
-    pointChange2 = ratingCalc(playerBRating, playerERating, higherRatingWins(match2[0]))
-    pointChange3 = ratingCalc(playerCRating, playerDRating, higherRatingWins(match3[0]))
-    pointChange4 = ratingCalc(playerBRating, playerGRating, higherRatingWins(match4[0]))
-    pointChange5 = ratingCalc(playerCRating, playerFRating, higherRatingWins(match5[0]))
-    pointChange6 = ratingCalc(playerDRating, playerERating, higherRatingWins(match6[0]))
-    pointChange7 = ratingCalc(playerARating, playerERating, higherRatingWins(match7[0]))
-    pointChange8 = ratingCalc(playerBRating, playerDRating, higherRatingWins(match8[0]))
-    pointChange9 = ratingCalc(playerCRating, playerGRating, higherRatingWins(match9[0]))
-    pointChange10 = ratingCalc(playerARating, playerCRating, higherRatingWins(match10[0]))
-    pointChange11 = ratingCalc(playerDRating, playerFRating, higherRatingWins(match11[0]))
-    pointChange12 = ratingCalc(playerERating, playerGRating, higherRatingWins(match12[0]))
-    pointChange13 = ratingCalc(playerFRating, playerGRating, higherRatingWins(match13[0]))
-    pointChange14 = ratingCalc(playerARating, playerDRating, higherRatingWins(match14[0]))
-    pointChange15 = ratingCalc(playerBRating, playerCRating, higherRatingWins(match15[0]))
-    pointChange16 = ratingCalc(playerARating, playerBRating, higherRatingWins(match16[0]))
-    pointChange17 = ratingCalc(playerERating, playerFRating, higherRatingWins(match17[0]))
-    pointChange18 = ratingCalc(playerDRating, playerGRating, higherRatingWins(match18[0]))
-    pointChange19 = ratingCalc(playerARating, playerGRating, higherRatingWins(match19[0]))
-    pointChange20 = ratingCalc(playerBRating, playerFRating, higherRatingWins(match20[0]))
-    pointChange21 = ratingCalc(playerCRating, playerERating, higherRatingWins(match21[0]))
-    pointChangeList.extend((pointChange1, pointChange2, pointChange3, pointChange4, pointChange5,
-                        pointChange6, pointChange7, pointChange8, pointChange9, pointChange10,
-                        pointChange11, pointChange12, pointChange13, pointChange14, pointChange15,
-                        pointChange16, pointChange17, pointChange18, pointChange19, pointChange20,
-                        pointChange21))
-    pointChangeWriter(pointChangeList, sheet)
-
-
-    playersTotalChange = []
-    playerAChange = pointChange1 + pointChange7 + pointChange10 + pointChange14 + pointChange16 + pointChange19
-    playerBChange = pointChange2 + pointChange4 + pointChange8 + pointChange15 + -(pointChange16) + pointChange20
-    playerCChange = pointChange3 + pointChange5 + pointChange9 + -(pointChange10) + -(pointChange15) + pointChange21
-    playerDChange = -(pointChange2) + -(pointChange6) + -(pointChange7) + pointChange12 + pointChange17 + -(pointChange21)
-    playerEChange = -(pointChange1) + -(pointChange5) + -(pointChange11) + pointChange13 + -(pointChange17) + -(pointChange20)
-    playerFChange = -(pointChange4) + -(pointChange9) + -(pointChange12) + -(pointChange13) + -(pointChange18) + -(pointChange19)
-    playersTotalChange.extend((playerAChange, playerBChange, playerCChange, playerDChange, playerEChange, playerFChange))
-
-    return playersTotalChange
-
-def resultWriter(matchResultList, sheet):
-    counter = 4
-    for i in range(0, len(matchResultList)):
-        sheet.write('C' + str(counter), int(matchResultList[i][0]))
-        sheet.write('C' + str(counter + 1), int(matchResultList[i][2]))
-        counter += 3
-
-def pointChangeWriter(pointChangeList, sheet):
-    counter = 4
-    for i in range(0, len(pointChangeList)):
-        sheet.write('E' + str(counter), pointChangeList[i])
-        sheet.write('E' + str(counter + 1), -(pointChangeList[i]))
-        counter += 3
-
-def sheetMerger(groupPlayers, sheet, merge_format1, merge_format2):
-    sheet.merge_range('A1:E1', 'Group {Replace This} - Match Record', merge_format1)
-    amountOfMerges = 6
-    merge = 3
-    amountOfPlayers = groupPlayers.num_players
-    if (amountOfPlayers != 4):
-        start = 4
-        while (amountOfPlayers > start):
-            amountOfMerges += 5
-            start += 1
-    for _ in range(amountOfMerges):
-        sheet.merge_range('A' + str(merge) + ':E' + str(merge), ' ', merge_format2)
-        merge += 3
-
-def tableWriter(worksheet, groupSize, groupPlayers, overallRatingChange, seedLetterList, spacer):
-    seedCounter = 0
-    groupNameCounter = 0
-    groupRatingCounter = 1
-    ratingChangeCounter = 0
-
+def tableWriter(worksheet, groupSize, groupPlayers, seedLetterList, spacer):
     regular_fill = workbook.add_format()
     regular_fill.set_pattern(1)
     regular_fill.set_bg_color('white')
 
-    for i in range(groupSize):
+    for i in range(0, groupSize):
         row_num = i + spacer + 2
-        col_num = i + 1
-        ratingAfter = groupPlayers.players[i].player_rating + overallRatingChange[ratingChangeCounter]
-        worksheet.write(row_num, col_num, seedLetterList[seedCounter], regular_fill)
-        worksheet.write(row_num, col_num, groupPlayers.players[i].player_name, regular_fill)
-        worksheet.write(row_num, col_num, groupPlayers.players[i].player_rating, regular_fill)
-        worksheet.write(row_num, col_num, ' ', regular_fill)
-        worksheet.write(row_num, col_num, overallRatingChange[ratingChangeCounter], regular_fill)
-        worksheet.write(row_num, col_num, ratingAfter, regular_fill)
-
-        seedCounter += 1
-        groupNameCounter += 1
-        groupRatingCounter += 1
-        ratingChangeCounter += 1
+        ratingAfter = groupPlayers.players[i].final_rating
+        worksheet.write(row_num, 1, seedLetterList[i], regular_fill)
+        worksheet.write(row_num, 2, groupPlayers.players[i].player_name, regular_fill)
+        worksheet.write(row_num, 3, groupPlayers.players[i].player_rating, regular_fill)
+        worksheet.write(row_num, 4, ' ', regular_fill)
+        worksheet.write(row_num, 5, groupPlayers.players[i].rating_change, regular_fill)
+        worksheet.write(row_num, 6, ratingAfter, regular_fill)
 
 def tableMaker(worksheet, spacer, spacerGroupSize, groupNumber):
     group_title = workbook.add_format({
@@ -1032,21 +344,6 @@ def tableMaker(worksheet, spacer, spacerGroupSize, groupNumber):
     worksheet.write(spacer, 4, 'Matches Won', header_fill)
     worksheet.write(spacer, 5, 'Rating Change', header_fill)
     worksheet.write(spacer, 6, 'Rating After', header_fill)
-
-def determineFormat(matchRecord, group):
-    if group.num_players == 4:
-        return fourPersonResultFormat(matchRecord, group)
-    elif group.num_players == 5:
-        return fivePersonResultFormat(matchRecord, group)
-    elif group.num_players == 6:
-        return sixPersonResultFormat(matchRecord, group)
-
-def groupMaker(groupInfo):
-    groupList = []
-    for key, value in groupInfo.items():
-        groupList.append(key)
-        groupList.append(value)
-    return groupList
 
 if __name__ == "__main__":
     print("Basic rules for league at GTTTA:\n")
@@ -1070,153 +367,152 @@ if __name__ == "__main__":
     worksheet.set_column(4, 4, len('Matches Won') + 1)
     worksheet.set_column(5, 5, len('Rating Change'))
     worksheet.set_column(6, 6, len('Rating After') - 1)
-    seedLetter = ['A','B','C','D','E','F','G']
+    seedLetter = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
     if (len(group_list) == 1): # Makes table just for group one
         group_one = group_list[0]
-
-        matchRecord1 = workbook.add_worksheet('Group 1')
-        overallRatingChange = determineFormat(matchRecord1, group_one)
+        sheet = workbook.add_worksheet('Group 1')
+        result_format = ResultFormat(sheet, group_one)
+        result_format.construct_sheet()
 
         tableMaker(worksheet, 1, group_one.num_players + 1, group_one.group_num)
-        tableWriter(worksheet, group_one.num_players, group_one, overallRatingChange, seedLetter, 0)
+        tableWriter(worksheet, group_one.num_players, group_one, seedLetter, 0)
 
-
-    if (len(group_list) == 2): ##Makes tables just for groups one and two
-
-        groupOnePlayers = groupMaker(groupOneInfo)
-        swapper(groupOnePlayers)
-        swapChecker(groupOnePlayers)
-
-        groupTwoPlayers = groupMaker(groupTwoInfo)
-        swapper(groupTwoPlayers)
-        swapChecker(groupTwoPlayers)
-
-        matchRecord1 = workbook.add_worksheet('Group 1')
-        overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
-
-        matchRecord2 = workbook.add_worksheet('Group 2')
-        overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
-
-        group1Size = group_list[0]
-        group2Size = group_list[1]
-        groupSizeDifference = abs(group1Size - group2Size)
-
-        #Makes 1st table and inputs basic info
-        tableMaker(worksheet, 1, group1Size + 1, 1)
-        tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
-
-        #Makes 2nd table and inputs basic info
-        spacer = group1Size - groupSizeDifference
-
-        tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
-        tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
-
-
-    if (len(group_list) == 3): ##Makes tables for groups 1, 2, and 3
-
-        groupOnePlayers = groupMaker(groupOneInfo)
-        swapper(groupOnePlayers)
-        swapChecker(groupOnePlayers)
-
-        groupTwoPlayers = groupMaker(groupTwoInfo)
-        swapper(groupTwoPlayers)
-        swapChecker(groupTwoPlayers)
-
-        groupThreePlayers = groupMaker(groupThreeInfo)
-        swapper(groupThreePlayers)
-        swapChecker(groupThreePlayers)
-
-        matchRecord1 = workbook.add_worksheet('Group 1')
-        overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
-
-        matchRecord2 = workbook.add_worksheet('Group 2')
-        overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
-
-        matchRecord3 = workbook.add_worksheet('Group 3')
-        overallRatingChange3 = determineFormat(matchRecord1, groupThreePlayers)
-
-        group1Size = group_list[0]
-        group2Size = group_list[1]
-        group3Size = group_list[2]
-        groupSizeDifference = abs(group1Size - group2Size)
-
-        #Makes 1st table and inputs basic info
-        tableMaker(worksheet, 1, group1Size + 1, 1)
-        tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
-
-        #Makes 2nd table and inputs basic info
-        spacer = group1Size - groupSizeDifference
-
-        tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
-        tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
-
-        #Makes 3rd table and inputs basic info
-        spacer3 = group3Size + spacer + group2Size + 2
-
-        tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
-        tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
-
-
-    if (len(group_list) == 4): ##Makes tables for all 4 groups
-
-        groupOnePlayers = groupMaker(groupOneInfo)
-        swapper(groupOnePlayers)
-        swapChecker(groupOnePlayers)
-
-        groupTwoPlayers = groupMaker(groupTwoInfo)
-        swapper(groupTwoPlayers)
-        swapChecker(groupTwoPlayers)
-
-        groupThreePlayers = groupMaker(groupThreeInfo)
-        swapper(groupThreePlayers)
-        swapChecker(groupThreePlayers)
-
-        groupFourPlayers = groupMaker(groupFourInfo)
-        swapper(groupFourPlayers)
-        swapChecker(groupFourPlayers)
-
-        group1Size = group_list[0]
-        group2Size = group_list[1]
-        group3Size = group_list[2]
-        group4Size = group_list[3]
-        groupSizeDifference = abs(group1Size - group2Size)
-
-        matchRecord1 = workbook.add_worksheet('Group 1')
-        overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
-
-        matchRecord2 = workbook.add_worksheet('Group 2')
-        overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
-
-        matchRecord3 = workbook.add_worksheet('Group 3')
-        overallRatingChange3 = determineFormat(matchRecord3, groupThreePlayers)
-
-        matchRecord4 = workbook.add_worksheet('Group 4')
-        overallRatingChange4 = determineFormat(matchRecord4, groupFourPlayers)
-
-        #Makes 1st table and inputs basic info
-        tableMaker(worksheet, 1, group1Size + 1, 1)
-        tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
-
-        #Makes 2nd table and inputs basic info
-        spacer = group1Size - groupSizeDifference
-
-        tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
-        tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
-
-
-        #Makes 3rd table and inputs basic info
-        spacer3 = group3Size + spacer + group2Size + 2
-
-        tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
-        tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
-
-
-        #Makes 4th table and inputs basic info
-        spacer4 = group4Size + spacer3 + group3Size + 2
-
-        tableMaker(worksheet, spacer4 + 4, spacer4 + group4Size + 4, 4)
-        tableWriter(worksheet, group4Size, groupFourPlayers, overallRatingChange4, seedLetter, spacer4 + 4)
+    # if (len(group_list) == 2): ##Makes tables just for groups one and two
+    #
+    #     groupOnePlayers = groupMaker(groupOneInfo)
+    #     swapper(groupOnePlayers)
+    #     swapChecker(groupOnePlayers)
+    #
+    #     groupTwoPlayers = groupMaker(groupTwoInfo)
+    #     swapper(groupTwoPlayers)
+    #     swapChecker(groupTwoPlayers)
+    #
+    #     matchRecord1 = workbook.add_worksheet('Group 1')
+    #     overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
+    #
+    #     matchRecord2 = workbook.add_worksheet('Group 2')
+    #     overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
+    #
+    #     group1Size = group_list[0]
+    #     group2Size = group_list[1]
+    #     groupSizeDifference = abs(group1Size - group2Size)
+    #
+    #     #Makes 1st table and inputs basic info
+    #     tableMaker(worksheet, 1, group1Size + 1, 1)
+    #     tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
+    #
+    #     #Makes 2nd table and inputs basic info
+    #     spacer = group1Size - groupSizeDifference
+    #
+    #     tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
+    #     tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
+    #
+    #
+    # if (len(group_list) == 3): ##Makes tables for groups 1, 2, and 3
+    #
+    #     groupOnePlayers = groupMaker(groupOneInfo)
+    #     swapper(groupOnePlayers)
+    #     swapChecker(groupOnePlayers)
+    #
+    #     groupTwoPlayers = groupMaker(groupTwoInfo)
+    #     swapper(groupTwoPlayers)
+    #     swapChecker(groupTwoPlayers)
+    #
+    #     groupThreePlayers = groupMaker(groupThreeInfo)
+    #     swapper(groupThreePlayers)
+    #     swapChecker(groupThreePlayers)
+    #
+    #     matchRecord1 = workbook.add_worksheet('Group 1')
+    #     overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
+    #
+    #     matchRecord2 = workbook.add_worksheet('Group 2')
+    #     overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
+    #
+    #     matchRecord3 = workbook.add_worksheet('Group 3')
+    #     overallRatingChange3 = determineFormat(matchRecord1, groupThreePlayers)
+    #
+    #     group1Size = group_list[0]
+    #     group2Size = group_list[1]
+    #     group3Size = group_list[2]
+    #     groupSizeDifference = abs(group1Size - group2Size)
+    #
+    #     #Makes 1st table and inputs basic info
+    #     tableMaker(worksheet, 1, group1Size + 1, 1)
+    #     tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
+    #
+    #     #Makes 2nd table and inputs basic info
+    #     spacer = group1Size - groupSizeDifference
+    #
+    #     tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
+    #     tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
+    #
+    #     #Makes 3rd table and inputs basic info
+    #     spacer3 = group3Size + spacer + group2Size + 2
+    #
+    #     tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
+    #     tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
+    #
+    #
+    # if (len(group_list) == 4): ##Makes tables for all 4 groups
+    #
+    #     groupOnePlayers = groupMaker(groupOneInfo)
+    #     swapper(groupOnePlayers)
+    #     swapChecker(groupOnePlayers)
+    #
+    #     groupTwoPlayers = groupMaker(groupTwoInfo)
+    #     swapper(groupTwoPlayers)
+    #     swapChecker(groupTwoPlayers)
+    #
+    #     groupThreePlayers = groupMaker(groupThreeInfo)
+    #     swapper(groupThreePlayers)
+    #     swapChecker(groupThreePlayers)
+    #
+    #     groupFourPlayers = groupMaker(groupFourInfo)
+    #     swapper(groupFourPlayers)
+    #     swapChecker(groupFourPlayers)
+    #
+    #     group1Size = group_list[0]
+    #     group2Size = group_list[1]
+    #     group3Size = group_list[2]
+    #     group4Size = group_list[3]
+    #     groupSizeDifference = abs(group1Size - group2Size)
+    #
+    #     matchRecord1 = workbook.add_worksheet('Group 1')
+    #     overallRatingChange = determineFormat(matchRecord1, groupOnePlayers)
+    #
+    #     matchRecord2 = workbook.add_worksheet('Group 2')
+    #     overallRatingChange2 = determineFormat(matchRecord2, groupTwoPlayers)
+    #
+    #     matchRecord3 = workbook.add_worksheet('Group 3')
+    #     overallRatingChange3 = determineFormat(matchRecord3, groupThreePlayers)
+    #
+    #     matchRecord4 = workbook.add_worksheet('Group 4')
+    #     overallRatingChange4 = determineFormat(matchRecord4, groupFourPlayers)
+    #
+    #     #Makes 1st table and inputs basic info
+    #     tableMaker(worksheet, 1, group1Size + 1, 1)
+    #     tableWriter(worksheet, group1Size, groupOnePlayers, overallRatingChange, seedLetter, 0)
+    #
+    #     #Makes 2nd table and inputs basic info
+    #     spacer = group1Size - groupSizeDifference
+    #
+    #     tableMaker(worksheet, spacer + 5, spacer + group2Size + 5, 2)
+    #     tableWriter(worksheet, group2Size, groupTwoPlayers, overallRatingChange2, seedLetter, spacer + 4)
+    #
+    #
+    #     #Makes 3rd table and inputs basic info
+    #     spacer3 = group3Size + spacer + group2Size + 2
+    #
+    #     tableMaker(worksheet, spacer3 + 4, spacer3 + group3Size + 4, 3)
+    #     tableWriter(worksheet, group3Size, groupThreePlayers, overallRatingChange3, seedLetter, spacer3 + 3)
+    #
+    #
+    #     #Makes 4th table and inputs basic info
+    #     spacer4 = group4Size + spacer3 + group3Size + 2
+    #
+    #     tableMaker(worksheet, spacer4 + 4, spacer4 + group4Size + 4, 4)
+    #     tableWriter(worksheet, group4Size, groupFourPlayers, overallRatingChange4, seedLetter, spacer4 + 4)
 
 
     print('\n\n')
