@@ -176,7 +176,7 @@ class ResultSheet:
         self.sheet_merger()
         self.header_writer()
 
-        print('\nPlease input the game scores for the matches.')
+        print('\nPlease input the game scores for {}.'.format(self.group.group_name))
         print('\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2')
         print('In the case of B losing to D 2-3, input 2:3\n')
 
@@ -293,17 +293,16 @@ if __name__ == "__main__":
     print("There can be no more than seven players in any group.")
     print("There can be no less than four people per group.\n")
 
+    workbook, group_title_format, header_fill, regular_fill = summary_params = set_up_workbook()
+    summary_sheet = set_up_summary_sheet(*summary_params)
+    title_row_num = 0
+
     groups = Groups()
     groups.construct_groups()
     group_list = groups.group_list
+
     for group in group_list:
         group.get_info()
-
-    workbook, group_title_format, header_fill, regular_fill = summary_params = set_up_workbook()
-    summary_sheet = set_up_summary_sheet(*summary_params)
-
-    title_row_num = 0
-    for group in group_list:
         sheet = workbook.add_worksheet(group.group_name)
         result_sheet = ResultSheet(sheet, group)
         result_sheet.construct_sheet()
@@ -313,7 +312,7 @@ if __name__ == "__main__":
         summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num,
                                  last_row_num=last_row_num, group_num=group.group_num)
         summary_sheet.write_to_table(group_size=group.num_players, group=group, first_data_row_num=first_data_row_num)
-        title_row_num += last_row_num + 2
+        title_row_num = last_row_num + 2
 
     print('\n\n')
     print(
