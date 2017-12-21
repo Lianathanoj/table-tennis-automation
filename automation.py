@@ -42,145 +42,38 @@ class Groups:
     def add_group(self, group):
         self.group_list.append(group)
 
-def construct_groups():
-    while True:
-        try:
-            num_groups = int(input('Number of groups: '))
-        except ValueError:
-            print('Please input an integer.')
-            continue
-        if num_groups > 4:
-            print('There cannot be more than four groups. Try again.')
-            continue
-        else:
-            break
-
-    groups = Groups(num_groups=num_groups)
-
-    for x in range(num_groups):
-        group_num = x + 1
-
+    def construct_groups(self):
         while True:
             try:
-                num_players = int(input('How many people were in Group ' + str(group_num) + '? '))
-                print('\n')
+                self.num_groups = int(input('Number of groups: '))
             except ValueError:
                 print('Please input an integer.')
                 continue
-            if num_players < 4:
-                print('There has to be at least four people in a group. Try again.')
+            if self.num_groups > 4:
+                print('There cannot be more than four groups. Try again.')
                 continue
-            if num_players > 7:
-                print('There cannot be more than seven people in a group. Try again.')
             else:
                 break
 
-        groups.add_group(Group(group_num=group_num, num_players=num_players))
+        for x in range(self.num_groups):
+            group_num = x + 1
+            while True:
+                try:
+                    num_players = int(input('How many people were in Group ' + str(group_num) + '? '))
+                    print('\n')
+                except ValueError:
+                    print('Please input an integer.')
+                    continue
+                if num_players < 4:
+                    print('There has to be at least four people in a group. Try again.')
+                    continue
+                if num_players > 7:
+                    print('There cannot be more than seven people in a group. Try again.')
+                else:
+                    break
+            self.add_group(Group(group_num=group_num, num_players=num_players))
 
-    return groups
-
-def groupOneInfo(x):
-    print("\n\nPlease refer to the current league ratings as you fill this part out.")
-    print("\nYou are currently putting in information for Group 1.")
-    playerInfo = {}
-    for i in range(0, x[0]):
-        playerName = input("Name of person in Group 1: ")
-        playerRating = int(input("Rating of person in Group 1: "))
-        playerInfo[playerName] = playerRating
-        print(str(playerName) + "(" + str(playerRating) + ") has been added to Group 1.\n")
-
-    return playerInfo
-
-def groupTwoInfo(x):
-    playerInfo = {}
-    if (len(x) < 2):
-        return None
-    else:
-        print("\nYou are currently putting in information for Group 2.")
-        for i in range(0, x[1]):
-            playerName = input("Name of person in Group 2: ")
-            playerRating = int(input("Rating of person in Group 2: "))
-            playerInfo[playerName] = playerRating
-            print('\n' + str(playerName) + "(" + str(playerRating) + ") has been added to Group 2.")
-            print('\n')
-        return playerInfo
-
-def groupThreeInfo(x):
-    playerInfo = {}
-    if (len(x) < 3):
-        return None
-    else:
-        print("\nYou are currently putting in information for Group 3.")
-        for i in range(0, x[2]):
-            playerName = input("Name of person in Group 3: ")
-            playerRating = int(input("Rating of person in Group 3: "))
-            playerInfo[playerName] = playerRating
-            print('\n' + str(playerName) + "(" + str(playerRating) + ") has been added to Group 3.")
-            print('\n')
-        return playerInfo
-
-def groupFourInfo(x):
-    playerInfo = {}
-    if (len(x) < 4):
-        return None
-    else:
-        print("\nYou are currently putting in information for Group 4.")
-        for i in range(0, x[3]):
-            playerName = input("Name of person in Group 4: ")
-            playerRating = int(input("Rating of person in Group 4: "))
-            playerInfo[playerName] = playerRating
-            print('\n' + str(playerName) + "(" + str(playerRating) + ") has been added to Group 4.")
-            print('\n')
-        return playerInfo
-
-def swapper(group):
-    for i in range(0, len(group)):
-        if (i == 1):
-            if (group[i] < group[i + 2]):
-                swapRating = group[i]
-                swapName = group[i - 1]
-
-                group[i - 1] = group[i + 1]
-                group[i] = group[i + 2]
-
-                group[i + 1] = swapName
-                group[i + 2] = swapRating
-        elif (i == len(group) - 2):
-            break
-        elif (i > 1 and i % 2 == 1):
-            if (group[i] < group[i + 2]):
-                swapRating = group[i]
-                swapName = group[i - 1]
-
-                group[i - 1] = group[i + 1]
-                group[i] = group[i + 2]
-
-                group[i + 1] = swapName
-                group[i + 2] = swapRating
-                if (group[i - 2] < group[i]):
-                    swapRating2 = group[i - 2]
-                    swapName2 = group[i - 3]
-
-                    group[i - 3] = group[i - 1]
-                    group[i - 2] = group[i]
-
-                    group[i - 1] = swapName2
-                    group[i] = swapRating2
-        else:
-            continue
-
-def swapChecker(group):
-    if (group[1] < group[3]):
-        swapRating = group[1]
-        swapName = group[0]
-
-        group[0] = group[2]
-        group[1] = group[3]
-
-        group[2] = swapName
-        group[3] = swapRating
-
-class ResultFormat:
+class ResultSheet:
     def __init__(self, sheet, group):
         self.sheet = sheet
         self.group = group
@@ -310,40 +203,72 @@ class ResultFormat:
             player_two.final_rating -= point_change
             player_two.rating_change -= point_change
 
-def tableWriter(worksheet, groupSize, groupPlayers, seedLetterList, spacer):
+class SummarySheet:
+    def __init__(self, worksheet, group_title, header_fill, regular_fill):
+        self.worksheet = worksheet
+        self.group_title = group_title
+        self.header_fill = header_fill
+        self.regular_fill = regular_fill
+        self.seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
+    def set_columns(self):
+        self.worksheet.set_column(1, 1, len('Seed') + 1)
+        self.worksheet.set_column(2, 2, 15)
+        self.worksheet.set_column(3, 3, len('Rating Before') - 1)
+        self.worksheet.set_column(4, 4, len('Matches Won') + 1)
+        self.worksheet.set_column(5, 5, len('Rating Change'))
+        self.worksheet.set_column(6, 6, len('Rating After') - 1)
+
+    def make_table(self, spacer, spacer_group_size, group_num):
+        self.worksheet.add_table(spacer, 1, spacer_group_size, 6, {'style' : 'Table Style Light 9'})
+        self.worksheet.merge_range(spacer - 1, 1, spacer - 1, 6, 'Group ' + str(group_num), self.group_title)
+        self.worksheet.write(spacer, 1, 'Seed', self.header_fill)
+        self.worksheet.write(spacer, 2, 'Player', self.header_fill)
+        self.worksheet.write(spacer, 3, 'Rating Before', self.header_fill)
+        self.worksheet.write(spacer, 4, 'Matches Won', self.header_fill)
+        self.worksheet.write(spacer, 5, 'Rating Change', self.header_fill)
+        self.worksheet.write(spacer, 6, 'Rating After', self.header_fill)
+
+    def write_to_table(self, group_size, group, spacer):
+        for i in range(0, group_size):
+            row_num = i + spacer + 2
+            self.worksheet.write(row_num, 1, self.seed_letters[i], self.regular_fill)
+            self.worksheet.write(row_num, 2, group.players[i].player_name, self.regular_fill)
+            self.worksheet.write(row_num, 3, group.players[i].player_rating, self.regular_fill)
+            self.worksheet.write(row_num, 4, ' ', self.regular_fill)
+            self.worksheet.write(row_num, 5, group.players[i].rating_change, self.regular_fill)
+            self.worksheet.write(row_num, 6, group.players[i].final_rating, self.regular_fill)
+
+def set_up_workbook():
+    print('\nWhen asked to trust the source of the workbook, click TRUST.')
+    name = input('\nBefore continuing, please input the name of this file. ')
+    if '.xlsx' not in name:
+        name += '.xlsx'
+    workbook = xlsxwriter.Workbook(name)
+
+    group_title = workbook.add_format({
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+        'fg_color': '#99CCFF'})
+    group_title.set_font_size(17)
+
+    header_fill = workbook.add_format()
+    header_fill.set_pattern(1)
+    header_fill.set_bg_color('gray')
+
     regular_fill = workbook.add_format()
     regular_fill.set_pattern(1)
     regular_fill.set_bg_color('white')
 
-    for i in range(0, groupSize):
-        row_num = i + spacer + 2
-        ratingAfter = groupPlayers.players[i].final_rating
-        worksheet.write(row_num, 1, seedLetterList[i], regular_fill)
-        worksheet.write(row_num, 2, groupPlayers.players[i].player_name, regular_fill)
-        worksheet.write(row_num, 3, groupPlayers.players[i].player_rating, regular_fill)
-        worksheet.write(row_num, 4, ' ', regular_fill)
-        worksheet.write(row_num, 5, groupPlayers.players[i].rating_change, regular_fill)
-        worksheet.write(row_num, 6, ratingAfter, regular_fill)
+    return workbook, group_title, header_fill, regular_fill
 
-def tableMaker(worksheet, spacer, spacerGroupSize, groupNumber):
-    group_title = workbook.add_format({
-        'border' : 1,
-        'align' : 'center',
-        'valign' : 'vcenter',
-        'fg_color': '#99CCFF'})
-    header_fill = workbook.add_format()
-    header_fill.set_pattern(1)
-    header_fill.set_bg_color('gray')
-    
-    group_title.set_font_size(17)
-    worksheet.add_table(spacer, 1, spacerGroupSize, 6, {'style' : 'Table Style Light 9'})
-    worksheet.merge_range(spacer - 1, 1, spacer - 1, 6, 'Group ' + str(groupNumber), group_title)
-    worksheet.write(spacer, 1, 'Seed', header_fill)
-    worksheet.write(spacer, 2, 'Player', header_fill)
-    worksheet.write(spacer, 3, 'Rating Before', header_fill)
-    worksheet.write(spacer, 4, 'Matches Won', header_fill)
-    worksheet.write(spacer, 5, 'Rating Change', header_fill)
-    worksheet.write(spacer, 6, 'Rating After', header_fill)
+def set_up_summary_sheet(workbook, group_title, header_fill, regular_fill):
+    worksheet = workbook.add_worksheet('Summary')
+    summary_sheet = SummarySheet(worksheet, group_title, header_fill, regular_fill)
+    summary_sheet.set_columns()
+
+    return summary_sheet
 
 if __name__ == "__main__":
     print("Basic rules for league at GTTTA:\n")
@@ -351,32 +276,22 @@ if __name__ == "__main__":
     print("There can be no more than seven players in any group.")
     print("There can be no less than four people per group.\n")
 
-    groups = construct_groups()
+    groups = Groups()
+    groups.construct_groups()
     group_list = groups.group_list
     for group in group_list:
         group.get_info()
 
-    print('\nWhen asked to trust the source of the workbook, click TRUST.')
-    path = input('\nBefore continuing, please input the name of this file. ')
-
-    workbook = xlsxwriter.Workbook(path)
-    worksheet = workbook.add_worksheet('Summary')
-    worksheet.set_column(1, 1, len('Seed') + 1)
-    worksheet.set_column(2, 2, 15)
-    worksheet.set_column(3, 3, len('Rating Before') - 1)
-    worksheet.set_column(4, 4, len('Matches Won') + 1)
-    worksheet.set_column(5, 5, len('Rating Change'))
-    worksheet.set_column(6, 6, len('Rating After') - 1)
-    seedLetter = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+    workbook, group_title, header_fill, regular_fill = summary_params = set_up_workbook()
+    summary_sheet = set_up_summary_sheet(*summary_params)
 
     if (len(group_list) == 1): # Makes table just for group one
         group_one = group_list[0]
         sheet = workbook.add_worksheet('Group 1')
-        result_format = ResultFormat(sheet, group_one)
-        result_format.construct_sheet()
-
-        tableMaker(worksheet, 1, group_one.num_players + 1, group_one.group_num)
-        tableWriter(worksheet, group_one.num_players, group_one, seedLetter, 0)
+        result_sheet = ResultSheet(sheet, group_one)
+        result_sheet.construct_sheet()
+        summary_sheet.make_table(1, group_one.num_players + 1, group_one.group_num)
+        summary_sheet.write_to_table(group_one.num_players, group_one, 0)
 
     # if (len(group_list) == 2): ##Makes tables just for groups one and two
     #
