@@ -8,10 +8,10 @@ class Player:
     def __init__(self, player_name, player_rating):
         self.player_name = player_name
         self.player_rating = player_rating
+        self.final_rating = player_rating
         self.matches_won = 0
         self.games_won = 0
         self.rating_change = 0
-        self.final_rating = player_rating
 
     def __str__(self):
         return str(self.player_name) + " (" + str(self.player_rating) + ")"
@@ -23,6 +23,7 @@ class Group:
         self.group_name = "Group {}".format(self.group_num)
         self.num_players = num_players
         self.players = []
+        self.group_winner = None
 
     def get_info(self):
         for i in range(1, self.num_players + 1):
@@ -31,11 +32,10 @@ class Group:
             player_info = Player(player_name=player_name, player_rating=player_rating)
             self.players.append(player_info)
             print(str(player_info) + " has been added to {}.\n".format(self.group_name))
-
         self.sort_ratings()
 
     def sort_ratings(self):
-        self.players = sorted(self.players, key=lambda player_info: player_info.player_rating, reverse=True)
+        self.players = sorted(self.players, key=lambda player: player.player_rating, reverse=True)
 
 
 class Groups:
@@ -95,6 +95,17 @@ class ResultSheet:
         self.letter_dict = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
         self.last_row = self.last_row_selection[self.num_players]
         self.match_ordering = self.match_ordering_selection[self.num_players]
+        self.match_winner = None
+
+    def get_match_winner(self):
+        most_matches_won = max(self.group.players, key=lambda player: player.matches_won).matches_won
+        players_most_matches = list(filter(lambda player: player.matches_won == most_matches_won,
+                                               self.group.players))
+        most_games_won = max(players_most_matches, key=lambda player: player.games_won).games_won
+        players_most_matches_games = list(filter(lambda player: player.games_won == most_games_won,
+                                               players_most_matches))
+        match_winner = sorted(players_most_matches_games, key=lambda player: player.final_rating)[-1]
+        return match_winner
 
     def higher_rating_is_winner(self, match):
         games_won = match[0]
@@ -135,7 +146,6 @@ class ResultSheet:
                     return point_change
                 else:
                     point_change -= 5
-
         return point_change
 
     def sheet_merger(self):
@@ -185,24 +195,22 @@ class ResultSheet:
             player_two_letter = self.match_ordering[index][2]
             player_one = self.group.players[self.letter_dict[player_one_letter]]
             player_two = self.group.players[self.letter_dict[player_two_letter]]
-
             match = input(self.match_ordering[index][0] + " versus " + self.match_ordering[index][2] + ": ")
             player_one.games_won += int(match[0])
             player_two.games_won += int(match[2])
+            point_change = self.rating_calc(player_one.player_rating, player_two.player_rating,
+                                            self.higher_rating_is_winner(match))
+
             if int(match[0]) > int(match[2]):
                 player_one.matches_won += 1
             else:
                 player_two.matches_won += 1
-
-            point_change = self.rating_calc(player_one.player_rating, player_two.player_rating,
-                                            self.higher_rating_is_winner(match))
 
             self.sheet.write('A' + str(row_num), player_one_letter)
             self.sheet.write('B' + str(row_num), player_one.player_name)
             self.sheet.write('C' + str(row_num), match[0])
             self.sheet.write('D' + str(row_num), player_one.player_rating)
             self.sheet.write('E' + str(row_num), point_change)
-
             self.sheet.write('A' + str(row_num + 1), player_two_letter)
             self.sheet.write('B' + str(row_num + 1), player_two.player_name)
             self.sheet.write('C' + str(row_num + 1), match[2])
@@ -214,22 +222,31 @@ class ResultSheet:
             player_two.final_rating -= point_change
             player_two.rating_change -= point_change
 
+        self.match_winner = self.get_match_winner()
 
 class SummarySheet:
-    def __init__(self, worksheet, group_title_format, header_fill, regular_fill):
+    def __init__(self, worksheet, main_title_format, description_format, group_title_format, header_fill, regular_fill, bold_fill, name):
         self.worksheet = worksheet
+        self.main_title_format = main_title_format
+        self.description_format = description_format
         self.group_title_format = group_title_format
         self.header_fill = header_fill
         self.regular_fill = regular_fill
+        self.bold_fill = bold_fill
+        self.name = name
+        self.player_name_col_len = 15
         self.seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
+    def len_longest_substring(self, string):
+        return len(max(string.split(' '), key=len))
+
     def set_columns(self):
-        self.worksheet.set_column(1, 1, len('Seed') + 1)
-        self.worksheet.set_column(2, 2, 15)
-        self.worksheet.set_column(3, 3, len('Rating Before') - 1)
-        self.worksheet.set_column(4, 4, len('Matches Won') + 1)
-        self.worksheet.set_column(5, 5, len('Rating Change'))
-        self.worksheet.set_column(6, 6, len('Rating After') - 1)
+        self.worksheet.set_column(1, 1, self.len_longest_substring('Seed') + 1)
+        self.worksheet.set_column(2, 2, self.player_name_col_len)
+        self.worksheet.set_column(3, 3, self.len_longest_substring('Rating Before') + 1)
+        self.worksheet.set_column(4, 4, self.len_longest_substring('Matches Won') + 1)
+        self.worksheet.set_column(5, 5, self.len_longest_substring('Rating Change') + 1)
+        self.worksheet.set_column(6, 6, self.len_longest_substring('Rating After') + 1)
 
     def make_table(self, title_row_num, header_row_num, last_row_num, group_num):
         self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=6,
@@ -243,45 +260,98 @@ class SummarySheet:
         self.worksheet.write(header_row_num, 5, 'Rating Change', self.header_fill)
         self.worksheet.write(header_row_num, 6, 'Rating After', self.header_fill)
 
-    def write_to_table(self, group_size, group, first_data_row_num):
+    def write_to_table(self, group_size, group, first_data_row_num, match_winner):
+        description = 'Group winners (denoted by **) are promoted to the next higher table during the next week' \
+                      ' if they are present.'
+        self.worksheet.merge_range(first_row=0, first_col=0, last_row=0, last_col=7,
+                                   data='League Summary - {}'.format(self.name), cell_format=self.main_title_format)
+        self.worksheet.merge_range(first_row=2, first_col=1, last_row=2, last_col=6, data=description,
+                                   cell_format=self.description_format)
+
         for i in range(0, group_size):
             row_num = i + first_data_row_num
+            player_name = group.players[i].player_name
+            if group.players[i] is match_winner:
+                player_name += "**"
+
             self.worksheet.write(row_num, 1, self.seed_letters[i], self.regular_fill)
-            self.worksheet.write(row_num, 2, group.players[i].player_name, self.regular_fill)
+            self.worksheet.write(row_num, 2, player_name, self.bold_fill)
             self.worksheet.write(row_num, 3, group.players[i].player_rating, self.regular_fill)
             self.worksheet.write(row_num, 4, group.players[i].matches_won, self.regular_fill)
             self.worksheet.write(row_num, 5, group.players[i].rating_change, self.regular_fill)
             self.worksheet.write(row_num, 6, group.players[i].final_rating, self.regular_fill)
 
+            len_longest_name = self.len_longest_substring(group.players[i].player_name)
+            if len_longest_name > self.player_name_col_len:
+                self.player_name_col_len = len_longest_name + 1
+                self.worksheet.set_column(2, 2, self.player_name_col_len)
+
 
 def set_up_workbook():
-    print('\nWhen asked to trust the source of the workbook, click TRUST.')
-    name = input('\nBefore continuing, please input the name of this file. ')
+    name = input('\nBefore continuing, please input the date this league took place, preferably in MM-DD-YY format. ').strip()
     if '.xlsx' not in name:
-        name += '.xlsx'
-    workbook = xlsxwriter.Workbook(name)
+        file_name = name + '.xlsx'
+    workbook = xlsxwriter.Workbook(file_name)
+    name = name.replace('-', '/')
+
+    main_title_format = workbook.add_format({
+        'align': 'center',
+        'valign': 'vcenter',
+        'font_size': 18,
+        'bg_color': '#ffed67',
+        'bold': True
+    })
+
+    description_format = workbook.add_format({
+        'align': 'center',
+        'valign': 'vcenter',
+        'text_wrap': True,
+        'italic': True,
+        'font_size': 11
+    })
 
     group_title_format = workbook.add_format({
         'border': 1,
         'align': 'center',
         'valign': 'vcenter',
-        'fg_color': '#99CCFF'})
-    group_title_format.set_font_size(17)
+        'font_size': 14,
+        'fg_color': '#99CCFF'
+    })
 
-    header_fill = workbook.add_format()
-    header_fill.set_pattern(1)
-    header_fill.set_bg_color('gray')
+    header_fill = workbook.add_format({
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+        'text_wrap': True,
+        'pattern': 1,
+        'bg_color': 'gray'
+    })
 
-    regular_fill = workbook.add_format()
-    regular_fill.set_pattern(1)
-    regular_fill.set_bg_color('white')
+    regular_fill = workbook.add_format({
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+        'pattern': 1,
+        'bg_color': 'white'
+    })
 
-    return workbook, group_title_format, header_fill, regular_fill
+    bold_fill = workbook.add_format({
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+        'bold': True,
+        'text_wrap': True,
+        'pattern': 1,
+        'bg_color': 'white'
+    })
+
+    return workbook, main_title_format, description_format, group_title_format, header_fill, regular_fill, bold_fill, name
 
 
-def set_up_summary_sheet(workbook, group_title_format, header_fill, regular_fill):
+def set_up_summary_sheet(workbook, main_title_format, description_format, group_title_format, header_fill, regular_fill, bold_fill, name):
     worksheet = workbook.add_worksheet('Summary')
-    summary_sheet = SummarySheet(worksheet, group_title_format, header_fill, regular_fill)
+    summary_sheet = SummarySheet(worksheet, main_title_format, description_format, group_title_format,
+                                 header_fill, regular_fill, bold_fill, name)
     summary_sheet.set_columns()
 
     return summary_sheet
@@ -293,9 +363,9 @@ if __name__ == "__main__":
     print("There can be no more than seven players in any group.")
     print("There can be no less than four people per group.\n")
 
-    workbook, group_title_format, header_fill, regular_fill = summary_params = set_up_workbook()
+    workbook, main_title_format, description_format, group_title_format, header_fill, regular_fill, bold_fill, name = summary_params = set_up_workbook()
     summary_sheet = set_up_summary_sheet(*summary_params)
-    title_row_num = 0
+    title_row_num = 4
 
     groups = Groups()
     groups.construct_groups()
@@ -311,10 +381,10 @@ if __name__ == "__main__":
         last_row_num = header_row_num + group.num_players
         summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num,
                                  last_row_num=last_row_num, group_num=group.group_num)
-        summary_sheet.write_to_table(group_size=group.num_players, group=group, first_data_row_num=first_data_row_num)
+        summary_sheet.write_to_table(group_size=group.num_players, group=group, first_data_row_num=first_data_row_num,
+                                     match_winner=result_sheet.match_winner)
         title_row_num = last_row_num + 2
 
-    print('\n\n')
     print(
         'NOTE: This only creates an excel file on your computer, when using Google Sheets, you must create a new xlsx file within the directory and import the file.')
     print(
