@@ -53,8 +53,25 @@ def get_credentials():
         print('Storing credentials to ' + credential_path)
     return credentials
 
+def generate_year_folder_id(service, file_name):
+    month, day, year = tuple(split(r'[\/\-\s]\s*', file_name.strip().replace('.xlsx', '')))
+    date_beginning = datetime_date(int(year), 8, 1)
+    league_date = datetime_date(int(year), int(month), int(day))
+
+    if league_date < date_beginning:
+        folder_name = '{}-{}'.format(int(year) - 1, int(year))
+    else:
+        folder_name = '{}-{}'.format(int(year), int(year) + 1)
+
+    file_metadata = {
+        'parents': ['0B9Mt_sNXCmNzbTVici1WYk1tcmc'],
+        'name': folder_name,
+        'mimeType': 'application/vnd.google-apps.folder'
+    }
+    file = service.files().create(body=file_metadata, fields='id').execute()
+    return file['id']
+
 def determine_year_folder_id(service, file_name):
-    # The Results folder contains all of the year folders.
     results_folder_id = '0B9Mt_sNXCmNzbTVici1WYk1tcmc'
     results = service.files().list(
         q="'{}' in parents".format(results_folder_id), fields="nextPageToken, files(id, name)").execute()
@@ -70,24 +87,41 @@ def determine_year_folder_id(service, file_name):
             if date_beginning <= datetime_date(int(year), int(month), int(day)) <= date_end:
                 return folder['id']
 
+    return generate_year_folder_id(service=service, file_name=file_name)
+
+def generate_semester_folder_id(service, year_folder_id, year, semester):
+    file_metadata = {
+        'parents': [year_folder_id],
+        'name': '{} {}'.format(semester, year),
+        'mimeType': 'application/vnd.google-apps.folder'
+    }
+    file = service.files().create(body=file_metadata, fields='id').execute()
+    print(file['id'])
+    return file['id']
+
 def determine_semester_folder_id(service, file_name, year_folder_id):
     results = service.files().list(
         q="'{}' in parents".format(year_folder_id), fields="nextPageToken, files(id, name)").execute()
     semester_folders = results.get('files', [])
-    if not semester_folders:
-        print('No folders found.')
-    else:
-        semester_month_dict = {(8, 12): 'fall', (1, 4): 'spring', (5, 7): 'summer'}
-        month, day, year = tuple(split(r'[\/\-\s]\s*', file_name.strip().replace('.xlsx', '')))
-        for month_ranges in semester_month_dict.keys():
-            if int(month) in range(int(month_ranges[0]), int(month_ranges[1]) + 1):
+    semester_month_dict = {(8, 12): 'fall', (1, 4): 'spring', (5, 7): 'summer'}
+    month, day, year = tuple(split(r'[\/\-\s]\s*', file_name.strip().replace('.xlsx', '')))
+    for month_ranges in semester_month_dict.keys():
+        if int(month) in range(int(month_ranges[0]), int(month_ranges[1]) + 1):
+            if not semester_folders:
+                return generate_semester_folder_id(service=service, year_folder_id=year_folder_id, year=year,
+                                                   semester=semester_month_dict[month_ranges].capitalize())
+            else:
                 returned_folder_id = next((folder['id'] for folder in semester_folders
                                         if ("league" in folder['name'].lower()
                                             and semester_month_dict[month_ranges]
                                             in folder['name'].lower())), None)
-                if returned_folder_id is None:
-                    return next((folder['id'] for folder in semester_folders if semester_month_dict[month_ranges]
-                                 in folder['name'].lower()), None)
+                if not returned_folder_id:
+                    returned_folder_id = next((folder['id'] for folder in semester_folders
+                                               if semester_month_dict[month_ranges]
+                                               in folder['name'].lower()), None)
+                if not returned_folder_id:
+                    return generate_semester_folder_id(service=service, year_folder_id=year_folder_id, year=year,
+                                                       semester=semester_month_dict[month_ranges].capitalize())
                 return returned_folder_id
 
 def upload_file(service, file_name, semester_folder_id):
