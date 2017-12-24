@@ -60,11 +60,13 @@ def determine_year_folder_id(service, file_name):
     if year_folders:
         month, day, year = file_name
         for folder in year_folders:
-            year_beginning, year_end = tuple(file_name_split(folder['name'].strip()))
-            date_beginning = datetime_date(int(year_beginning), 8, 1)
-            date_end = datetime_date(int(year_end), 7, 31)
-            if date_beginning <= datetime_date(year, month, day) <= date_end:
-                return folder['id']
+            split_file_name = file_name_split(folder['name'].strip())
+            if [element for element in split_file_name if element.isdigit()]:
+                year_beginning, year_end = tuple(split_file_name)
+                date_beginning = datetime_date(int(year_beginning), 8, 1)
+                date_end = datetime_date(int(year_end), 7, 31)
+                if date_beginning <= datetime_date(year, month, day) <= date_end:
+                    return folder['id']
     return generate_year_folder_id(service=service, file_name=file_name)
 
 def determine_semester_folder_id(service, file_name, is_tryouts, year_folder_id):
