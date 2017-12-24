@@ -140,7 +140,7 @@ def reformat_file_name(file_name):
     else:
         date = name_elements
     date_short = (date[0], date[1], date[2][:2])
-    date_long = tuple([int(element) for element in (date[0], date[1], date[2][:2] + '20')])
+    date_long = tuple([int(element) for element in (date[0], date[1], '20' + date[2][:2])])
     return date_long, date_short, is_tryouts
 
 def upload_file(service, drive_file_name, excel_file_name, semester_folder_id):

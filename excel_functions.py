@@ -257,7 +257,6 @@ class SummarySheet:
     def make_table(self, title_row_num, header_row_num, last_row_num, group_num):
         self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=6,
                                    data='Group ' + str(group_num), cell_format=self.summary_group_title_format)
-        self.worksheet.add_table(first_row=header_row_num, first_col=1, last_row=last_row_num, last_col=6)
         self.worksheet.write(header_row_num, 1, 'Seed', self.summary_header_format)
         self.worksheet.write(header_row_num, 2, 'Player', self.summary_header_format)
         self.worksheet.write(header_row_num, 3, 'Rating Before', self.summary_header_format)
@@ -388,10 +387,10 @@ def set_up_workbook():
     })
 
     all_info = {'summary_info': (workbook, summary_main_title_format, summary_description_format,
-                                   summary_group_title_format, summary_header_format, summary_regular_format,
-                                   summary_bold_format, name),
+                                 summary_group_title_format, summary_header_format, summary_regular_format,
+                                 summary_bold_format, name),
                 'results_info': (results_regular_format, results_group_title_format, results_merge_format,
-                                  results_header_format)}
+                                 results_header_format)}
 
     return all_info, workbook, file_name
 
