@@ -3,7 +3,6 @@
 
 import xlsxwriter
 
-
 class Player:
     def __init__(self, player_name, player_rating):
         self.player_name = player_name
@@ -297,8 +296,8 @@ def len_longest_substring(string):
     return len(max(string.split(' '), key=len))
 
 def set_up_workbook():
-    name = input('\nBefore continuing, please input the date this league took place,'
-                 'preferably in MM-DD-YY format. ').strip()
+    name = input("\nPlease input the date this league took place in MM-DD-YY format. If you are inputting results for "
+                 "tryouts, input 'MM-DD-YY Tryouts': ").strip().replace('\'', '')
     if '.xlsx' not in name:
         file_name = name + '.xlsx'
     workbook = xlsxwriter.Workbook(file_name)
@@ -431,7 +430,8 @@ def generate_workbook():
         last_row_num = header_row_num + group.num_players
         summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num,
                                  last_row_num=last_row_num, group_num=group.group_num)
-        summary_sheet.write_to_table(group_size=group.num_players, group=group, first_data_row_num=first_data_row_num,
+        summary_sheet.write_to_table(group_size=group.num_players, group=group,
+                                     first_data_row_num=first_data_row_num,
                                      match_winner=result_sheet.match_winner)
         title_row_num = last_row_num + 2
 
