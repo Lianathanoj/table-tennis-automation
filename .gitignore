@@ -1,4 +1,5 @@
-client_secret.json
+sheets_client_secret.json
+drive_client_secret.json
 *.xlsx
 *.txt
 .idea
