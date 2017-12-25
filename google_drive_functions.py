@@ -22,7 +22,7 @@ except ImportError:
 # at ~/.credentials/sheets.googleapis.com-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/drive'
 CLIENT_SECRET_FILE = 'drive_client_secret.json'
-APPLICATION_NAME = 'TT Automation'
+APPLICATION_NAME = 'TT Automation - Drive API'
 
 def get_credentials():
     """Gets valid user credentials from storage.
@@ -37,8 +37,7 @@ def get_credentials():
     credential_dir = os.path.join(home_dir, '.credentials')
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir,
-                                   'drive-python-quickstart.json')
+    credential_path = os.path.join(credential_dir, 'drive-api.json')
 
     store = Storage(credential_path)
     credentials = store.get()
@@ -153,6 +152,7 @@ def upload_file(service, drive_file_name, excel_file_name, semester_folder_id):
     }
     media = MediaFileUpload(excel_file_name, mimetype='application/vnd.ms-excel', resumable=True)
     file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    service.revisions().update(fileId=file['id'], revisionId=1, body={'published': True, 'publishAuto': True}).execute()
     return file['id']
 
 def main(file_name):
