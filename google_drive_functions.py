@@ -1,4 +1,5 @@
 from __future__ import print_function
+import shared_functions
 import httplib2
 import os
 
@@ -8,7 +9,6 @@ from apiclient.http import MediaFileUpload
 from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage
-from re import split
 from datetime import date as datetime_date
 from webbrowser import open
 
@@ -59,7 +59,7 @@ def determine_year_folder_id(service, file_name):
     if year_folders:
         month, day, year = file_name
         for folder in year_folders:
-            split_file_name = file_name_split(folder['name'].strip())
+            split_file_name = shared_functions.file_name_split(folder['name'].strip())
             if [element for element in split_file_name if element.isdigit()]:
                 year_beginning, year_end = tuple(split_file_name)
                 date_beginning = datetime_date(int(year_beginning), 8, 1)
@@ -80,7 +80,7 @@ def determine_semester_folder_id(service, file_name, is_tryouts, year_folder_id)
             if is_tryouts:
                 if semester_folders:
                     for folder in semester_folders:
-                        if [string for string in file_name_split(folder['name'].lower()) if 'try' in string]:
+                        if [string for string in shared_functions.file_name_split(folder['name'].lower()) if 'try' in string]:
                             return folder['id']
                 return generate_semester_folder_id(service=service, year=year, is_tryouts=is_tryouts,
                                                    semester=semester_month_dict[month_ranges].capitalize(),
@@ -129,21 +129,6 @@ def generate_semester_folder_id(service, year, semester, year_folder_id, is_tryo
     file = service.files().create(body=file_metadata, fields='id').execute()
     return file['id']
 
-def file_name_split(file_name):
-    name_elements = split(r'[\/\-\s]\s*', file_name.replace('.xlsx', ''))
-    return name_elements
-
-def reformat_file_name(file_name):
-    is_tryouts = True if 'tryout' in file_name.lower() else False
-    name_elements = file_name_split(file_name)
-    if is_tryouts:
-        date = name_elements[:-1]
-    else:
-        date = name_elements
-    date_short = (date[0], date[1], date[2][:2])
-    date_long = tuple([int(element) for element in (date[0], date[1], '20' + date[2][:2])])
-    return date_long, date_short, is_tryouts
-
 def upload_file(service, drive_file_name, excel_file_name, semester_folder_id):
     file_metadata = {
         'parents': [semester_folder_id],
@@ -160,7 +145,7 @@ def main(file_name):
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('drive', 'v3', http=http)
 
-    date_long, date_short, is_tryouts = reformat_file_name(file_name)
+    date_long, date_short, is_tryouts = shared_functions.reformat_file_name(file_name)
     year_folder_id = determine_year_folder_id(service=service, file_name=date_long)
     semester_folder_id = determine_semester_folder_id(service=service, file_name=date_long, is_tryouts=is_tryouts,
                                                       year_folder_id=year_folder_id)

@@ -47,7 +47,14 @@ def get_credentials():
         print('Storing credentials to ' + credential_path)
     return credentials
 
-def get_ratings_sheet_info(service, sheet_name, ratings_spreadsheet_id):
+def create_service():
+    credentials = get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    discoveryUrl = 'https://sheets.googleapis.com/$discovery/rest?version=v4'
+    service = discovery.build('sheets', 'v4', http=http, discoveryServiceUrl=discoveryUrl)
+    return service
+
+def get_ratings_sheet_info(service, sheet_name, ratings_spreadsheet_id='1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0'):
     sheets = get_sheets(service, ratings_spreadsheet_id)
     sheet_names = [sheet['properties']['title'] for sheet in sheets]
     if sheet_name in sheet_names:
@@ -60,8 +67,6 @@ def get_ratings_sheet_info(service, sheet_name, ratings_spreadsheet_id):
             print('No data found.')
         else:
             return values
-
-            #1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0
     else:
         generate_sheet(service, ratings_spreadsheet_id, sheet_name)
     return None
@@ -184,48 +189,48 @@ def generate_sheet(service, spreadsheet_id, sheet_name):
                 'fields': 'pixelSize'
             }
         },
-            {
-                'updateDimensionProperties': {
-                    'range': {
-                        'sheetId': new_sheet_id,
-                        'dimension': 'COLUMNS',
-                        'startIndex': 1,
-                        'endIndex': 2
-                    },
-                    'properties': {
-                        'pixelSize': 180
-                    },
-                    'fields': 'pixelSize'
-                }
-            },
-            {
-                'updateDimensionProperties': {
-                    'range': {
-                        'sheetId': new_sheet_id,
-                        'dimension': 'COLUMNS',
-                        'startIndex': 2,
-                        'endIndex': 3
-                    },
-                    'properties': {
-                        'pixelSize': 90
-                    },
-                    'fields': 'pixelSize'
-                }
-            },
-            {
-                'updateDimensionProperties': {
-                    'range': {
-                        'sheetId': new_sheet_id,
-                        'dimension': 'ROWS',
-                        'startIndex': 0,
-                        'endIndex': 3
-                    },
-                    'properties': {
-                        'pixelSize': 30
-                    },
-                    'fields': 'pixelSize'
-                }
-            }]
+        {
+            'updateDimensionProperties': {
+                'range': {
+                    'sheetId': new_sheet_id,
+                    'dimension': 'COLUMNS',
+                    'startIndex': 1,
+                    'endIndex': 2
+                },
+                'properties': {
+                    'pixelSize': 180
+                },
+                'fields': 'pixelSize'
+            }
+        },
+        {
+            'updateDimensionProperties': {
+                'range': {
+                    'sheetId': new_sheet_id,
+                    'dimension': 'COLUMNS',
+                    'startIndex': 2,
+                    'endIndex': 3
+                },
+                'properties': {
+                    'pixelSize': 90
+                },
+                'fields': 'pixelSize'
+            }
+        },
+        {
+            'updateDimensionProperties': {
+                'range': {
+                    'sheetId': new_sheet_id,
+                    'dimension': 'ROWS',
+                    'startIndex': 0,
+                    'endIndex': 3
+                },
+                'properties': {
+                    'pixelSize': 30
+                },
+                'fields': 'pixelSize'
+            }
+        }]
     }
 
     add_headers = service.spreadsheets().values().update(
@@ -250,7 +255,7 @@ def generate_sheet(service, spreadsheet_id, sheet_name):
         body=update_frozen_row_body
     ).execute()
 
-    update_frozen_row = service.spreadsheets().batchUpdate(
+    adjust_len_width = service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
         body=adjust_len_width_body
     ).execute()
@@ -267,14 +272,10 @@ def main():
     students in a sample spreadsheet:
     https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
     """
-    credentials = get_credentials()
-    http = credentials.authorize(httplib2.Http())
-    discoveryUrl = 'https://sheets.googleapis.com/$discovery/rest?version=v4'
-    service = discovery.build('sheets', 'v4', http=http, discoveryServiceUrl=discoveryUrl)
-    ratings_spreadsheet_id = '1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0'
 
+    service = create_service()
     # get_sheet_names(service)
-    get_ratings_sheet_info(service, 'Fall 2018', ratings_spreadsheet_id)
+    get_ratings_sheet_info(service, 'Fall 2018')
 
 if __name__ == '__main__':
     main()
