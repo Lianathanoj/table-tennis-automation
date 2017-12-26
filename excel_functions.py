@@ -4,6 +4,8 @@
 import xlsxwriter
 import shared_functions
 import google_sheets_functions
+import operator
+import datetime
 
 class Player:
     def __init__(self, player_name, player_rating):
@@ -25,22 +27,25 @@ class Group:
         self.players = []
         self.group_winner = None
 
-    def get_info(self, league_roster):
-        if not league_roster:
+    def get_info(self, league_roster_dict):
+        print('_______________________________________________________________________________\n')
+        print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
+        if not league_roster_dict:
             for i in range(1, self.num_players + 1):
-                player_name = input("Name of person {} in {}: ".format(i, self.group_name)).title()
-                player_rating = int(input("Rating of person {} in {}: ".format(i, self.group_name)))
+                player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
+                player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
                 print(str(player_info) + " has been added to {}.\n".format(self.group_name))
         else:
             for i in range(1, self.num_players + 1):
-                player_name = input("Name of person {} in {}: ".format(i, self.group_name)).title()
-                rating = league_roster.get(player_name)
+                player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
+                rating = league_roster_dict.get(player_name)
                 if rating:
                     player_rating = int(rating)
                 else:
-                    player_rating = int(input("Rating of person {} in {}: ".format(i, self.group_name)))
+                    player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
+                    league_roster_dict[player_name] = player_rating
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
                 print(str(player_info) + " has been added to {}.\n".format(self.group_name))
@@ -58,30 +63,15 @@ class Groups:
         self.group_list.append(group)
 
     def construct_groups(self):
-        while True:
-            try:
-                self.num_groups = int(input('Number of groups: '))
-            except ValueError:
-                print('Please input an integer.')
-                continue
-            if self.num_groups > 4:
-                print('There cannot be more than four groups. Try again.')
-                continue
-            else:
-                break
+        self.num_groups = correct_input('Number of groups: ', int)
 
         for x in range(self.num_groups):
             group_num = x + 1
             while True:
-                try:
-                    num_players = int(input('How many people were in Group ' + str(group_num) + '? '))
-                except ValueError:
-                    print('Please input an integer.')
-                    continue
+                num_players = correct_input('How many people were in Group ' + str(group_num) + '? ', int)
                 if num_players < 4:
                     print('There has to be at least four people in a group. Try again.')
-                    continue
-                if num_players > 7:
+                elif num_players > 7:
                     print('There cannot be more than seven people in a group. Try again.')
                 else:
                     break
@@ -191,20 +181,22 @@ class ResultSheet:
         self.sheet.write('D2', 'Rating Before', self.results_header_format)
         self.sheet.write('E2', 'Point Change', self.results_header_format)
 
-    def construct_sheet(self):
+    def construct_sheet(self, league_roster_dict):
         self.sheet_merger()
         self.header_writer()
 
-        print('\nPlease input the game scores for {}.'.format(self.group.group_name))
-        print('\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2')
-        print('In the case of B losing to D 2-3, input 2:3\n')
+        print('-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n')
+        print('Please input the game scores for {}.'.format(self.group.group_name))
+        print("\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
+        print("In the case of B losing to D 2-3, input 2:3.\n")
 
         for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
             player_one_letter = self.match_ordering[index][0]
             player_two_letter = self.match_ordering[index][2]
             player_one = self.group.players[self.letter_dict[player_one_letter]]
             player_two = self.group.players[self.letter_dict[player_two_letter]]
-            match = input(self.match_ordering[index][0] + " versus " + self.match_ordering[index][2] + ": ").strip()
+            match = correct_input(self.match_ordering[index][0] + " versus "
+                          + self.match_ordering[index][2] + ": ", 'match_input')
 
             if len(match) == 0 or (int(match[0]) == int(match[2]) == 0):
                 point_change = 0
@@ -215,7 +207,7 @@ class ResultSheet:
                                                 self.higher_rating_is_winner(match))
                 if int(match[0]) > int(match[2]):
                     player_one.matches_won += 1
-                else:
+                elif int(match[0]) < int(match[2]):
                     player_two.matches_won += 1
 
                 player_one.games_won += int(match[0])
@@ -237,7 +229,9 @@ class ResultSheet:
             player_two.final_rating -= point_change
             player_two.rating_change -= point_change
 
-        print('\n')
+        for player in self.group.players:
+            league_roster_dict[player.player_name] = player.final_rating
+
         self.match_winner = self.get_match_winner()
 
 class SummarySheet:
@@ -302,12 +296,47 @@ class SummarySheet:
                 self.player_name_col_len = len_longest_name + 1
                 self.worksheet.set_column(2, 2, self.player_name_col_len)
 
+def correct_input(input_text, var_type):
+    type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
+                 'date_input': "date input, e.g. 'MM-DD-YY' for normal leagues or 'MM-DD-YY Tryouts' for tryouts."}
+    if var_type == 'date_input':
+        date_input = input(input_text).strip().replace('\'', '')
+        while True:
+            try:
+                date_long, date_short, is_tryouts = tuple(shared_functions.reformat_file_name(date_input, 'try'))
+                month, day, year = tuple([int(element) for element in date_short])
+                if datetime.datetime(year=year, month=month, day=day):
+                    return '{}-{}-{} Tryouts'.format(month, day, year)\
+                        if is_tryouts else '{}-{}-{}'.format(month, day, year)
+            except:
+                print("Please input the correct format for the {}".format(type_dict[var_type]))
+                date_input = input('Date: ')
+    elif var_type == 'match_input':
+        while True:
+            try:
+                match_input = input(input_text).strip().replace('.', '')
+                if len(match_input) == 2 and match_input[0].isdigit() and match_input[1].isdigit():
+                    return match_input[0] + ":" + match_input[1]
+                elif len(match_input) == 3 and match_input[0].isdigit() and match_input[2].isdigit():
+                    return match_input
+                else:
+                    print("Please input the correct format for the {}".format(type_dict[var_type]))
+            except:
+                print("Please input the correct format for the {}".format(type_dict[var_type]))
+    else:
+        while True:
+            try:
+                return var_type(input(input_text))
+            except ValueError:
+                print("Please input the correct value of type {}.".format(type_dict[var_type]))
+
 def len_longest_substring(string):
     return len(max(string.split(' '), key=len))
 
 def set_up_workbook():
-    name = input("\nPlease input the date this league took place in MM-DD-YY format. If you are inputting results for "
-                 "tryouts, input 'MM-DD-YY Tryouts': ").strip().replace('\'', '')
+    name = correct_input("Please input the date this league took place in 'MM-DD-YY format.\n"
+                         "If you are inputting results for tryouts, input 'MM-DD-YY Tryouts': ", 'date_input')
+    print('')
     if '.xlsx' not in name:
         file_name = name + '.xlsx'
     workbook = xlsxwriter.Workbook(file_name)
@@ -415,7 +444,7 @@ def set_up_summary_sheet(workbook, summary_main_title_format, summary_descriptio
 
     return summary_sheet
 
-def get_league_roster(file_name):
+def get_ratings_sheet_name(file_name):
     semester_month_dict = {(8, 12): 'Fall', (1, 4): 'Spring', (5, 7): 'Summer'}
     date_long, date_short, is_tryouts = shared_functions.reformat_file_name(file_name)
     month, day, year = date_long
@@ -425,17 +454,11 @@ def get_league_roster(file_name):
         if month in range(month_ranges[0], month_ranges[1] + 1):
             sheet_name = '{} {}'.format(semester_month_dict[month_ranges], year)
 
-    service = google_sheets_functions.create_service()
-    league_roster = google_sheets_functions.get_ratings_sheet_info(service, sheet_name)
-
-    league_roster_dict = {league_roster[1][index]: league_roster[2][index]
-                          for index, element in enumerate(league_roster[0])}
-
-    return league_roster, league_roster_dict
+    return sheet_name
 
 def generate_workbook():
+    print('_______________________________________________________________________________')
     print("Basic rules for league at GTTTA:\n")
-    print("There can be no more than four groups.")
     print("There can be no more than seven players in any group.")
     print("There can be no less than four people per group.\n")
 
@@ -446,13 +469,18 @@ def generate_workbook():
     groups = Groups()
     groups.construct_groups()
     group_list = groups.group_list
-    league_roster_list, league_roster_dict = get_league_roster(file_name)
+
+    print('\nLoading roster, please wait..')
+    service = google_sheets_functions.create_service()
+    ratings_sheet_name = get_ratings_sheet_name(file_name)
+    league_roster_list, league_roster_dict = google_sheets_functions.get_league_roster(service, ratings_sheet_name)
+    ratings_sheet_start_row_index = len(league_roster_dict) + 1
 
     for group in group_list:
         group.get_info(league_roster_dict)
         sheet = workbook.add_worksheet(group.group_name)
         result_sheet = ResultSheet(sheet, group, *all_info['results_info'])
-        result_sheet.construct_sheet()
+        result_sheet.construct_sheet(league_roster_dict)
         header_row_num = title_row_num + 1
         first_data_row_num = header_row_num + 1
         last_row_num = header_row_num + group.num_players
@@ -463,7 +491,18 @@ def generate_workbook():
                                      match_winner=result_sheet.match_winner)
         title_row_num = last_row_num + 2
 
+    print('_______________________________________________________________________________')
     workbook.close()
+
+    ratings_sheet_end_row_index = len(league_roster_dict) + 1
+    ratings_sheet_data = [[i + 1, element[0], element[1]] for i, element
+                          in enumerate(sorted(league_roster_dict.items(),
+                                              key=operator.itemgetter(1),
+                                              reverse=True))]
+    google_sheets_functions.write_to_ratings_sheet(service=service, row_data=ratings_sheet_data,
+                                                   start_row_index=ratings_sheet_start_row_index,
+                                                   end_row_index=ratings_sheet_end_row_index,
+                                                   sheet_name=ratings_sheet_name)
     return file_name
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 from re import split
 
 def file_name_split(file_name):
-    name_elements = split(r'[\/\-\s]\s*', file_name.replace('.xlsx', ''))
+    name_elements = split(r'[\/\-\s]+', file_name.replace('.xlsx', ''))
     return name_elements
 
-def reformat_file_name(file_name):
-    is_tryouts = True if 'tryout' in file_name.lower() else False
+def reformat_file_name(file_name, tryout_string='tryout'):
+    is_tryouts = True if tryout_string in file_name.lower() else False
     name_elements = file_name_split(file_name)
     if is_tryouts:
         date = name_elements[:-1]

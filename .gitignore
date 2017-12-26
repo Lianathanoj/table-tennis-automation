@@ -2,5 +2,5 @@ sheets_client_secret.json
 drive_client_secret.json
 __pycache__/
 *.xlsx
-*.txt
+tests.txt
 .idea
