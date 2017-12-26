@@ -65,14 +65,10 @@ class Groups:
         while True:
             try:
                 self.num_groups = int(input('Number of groups: '))
+                break
             except ValueError:
                 print('Please input an integer.')
                 continue
-            if self.num_groups > 4:
-                print('There cannot be more than four groups. Try again.')
-                continue
-            else:
-                break
 
         for x in range(self.num_groups):
             group_num = x + 1
@@ -438,7 +434,6 @@ def get_ratings_sheet_name(file_name):
 def generate_workbook():
     print('_______________________________________________________________________________')
     print("Basic rules for league at GTTTA:\n")
-    print("There can be no more than four groups.")
     print("There can be no more than seven players in any group.")
     print("There can be no less than four people per group.\n")
 
