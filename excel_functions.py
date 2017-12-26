@@ -193,7 +193,7 @@ class ResultSheet:
         self.sheet.write('D2', 'Rating Before', self.results_header_format)
         self.sheet.write('E2', 'Point Change', self.results_header_format)
 
-    def construct_sheet(self):
+    def construct_sheet(self, league_roster_dict):
         self.sheet_merger()
         self.header_writer()
 
@@ -217,7 +217,7 @@ class ResultSheet:
                                                 self.higher_rating_is_winner(match))
                 if int(match[0]) > int(match[2]):
                     player_one.matches_won += 1
-                else:
+                elif int(match[0]) < int(match[2]):
                     player_two.matches_won += 1
 
                 player_one.games_won += int(match[0])
@@ -238,6 +238,9 @@ class ResultSheet:
             player_one.rating_change += point_change
             player_two.final_rating -= point_change
             player_two.rating_change -= point_change
+
+        for player in self.group.players:
+            league_roster_dict[player.player_name] = player.final_rating
 
         print('\n')
         self.match_winner = self.get_match_winner()
@@ -451,7 +454,7 @@ def generate_workbook():
         group.get_info(league_roster_dict)
         sheet = workbook.add_worksheet(group.group_name)
         result_sheet = ResultSheet(sheet, group, *all_info['results_info'])
-        result_sheet.construct_sheet()
+        result_sheet.construct_sheet(league_roster_dict)
         header_row_num = title_row_num + 1
         first_data_row_num = header_row_num + 1
         last_row_num = header_row_num + group.num_players
