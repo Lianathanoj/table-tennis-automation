@@ -20,6 +20,8 @@ SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 CLIENT_SECRET_FILE = 'sheets_client_secret.json'
 APPLICATION_NAME = 'TT Automation - Sheets API'
 
+RATINGS_SPREADSHEET_ID = '1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0'
+
 def get_credentials():
     """Gets valid user credentials from storage.
 
@@ -54,24 +56,34 @@ def create_service():
     service = discovery.build('sheets', 'v4', http=http, discoveryServiceUrl=discoveryUrl)
     return service
 
-def get_ratings_sheet_info(service, sheet_name, ratings_spreadsheet_id='1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0'):
-    sheets = get_sheets(service, ratings_spreadsheet_id)
+def get_sheets(service):
+    result = service.spreadsheets().get(
+        spreadsheetId=RATINGS_SPREADSHEET_ID).execute()
+    return [sheet for sheet in result['sheets']]
+
+def get_ratings_sheet_info(service, sheet_name):
+    sheets = get_sheets(service)
     sheet_names = [sheet['properties']['title'] for sheet in sheets]
     if sheet_name in sheet_names:
         range = '{}!A2:C'.format(sheet_name)
         result = service.spreadsheets().values().get(
-            spreadsheetId=ratings_spreadsheet_id, range=range, majorDimension='COLUMNS').execute()
+            spreadsheetId=RATINGS_SPREADSHEET_ID, range=range, majorDimension='COLUMNS').execute()
         values = result.get('values', [])
-
         if not values:
             print('No data found.')
         else:
             return values
     else:
-        generate_sheet(service, ratings_spreadsheet_id, sheet_name)
+        generate_ratings_sheet(service, sheet_name)
     return None
 
-def generate_sheet(service, spreadsheet_id, sheet_name):
+def get_league_roster(service, ratings_sheet_name):
+    league_roster = get_ratings_sheet_info(service, ratings_sheet_name)
+    league_roster_dict = {league_roster[1][index]: int(league_roster[2][index])
+                          for index, element in enumerate(league_roster[0])}
+    return league_roster, league_roster_dict
+
+def generate_ratings_sheet(service, sheet_name):
     new_sheet_body = {
         'requests': [
             {
@@ -84,7 +96,7 @@ def generate_sheet(service, spreadsheet_id, sheet_name):
             },
         ]
     }
-    add_sheet = service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=new_sheet_body).execute()
+    add_sheet = service.spreadsheets().batchUpdate(spreadsheetId=RATINGS_SPREADSHEET_ID, body=new_sheet_body).execute()
     new_sheet_id = add_sheet['replies'][0]['addSheet']['properties']['sheetId']
 
     update_headers_body = {
@@ -233,49 +245,157 @@ def generate_sheet(service, spreadsheet_id, sheet_name):
         }]
     }
 
-    add_headers = service.spreadsheets().values().update(
-        spreadsheetId=spreadsheet_id,
+    service.spreadsheets().values().update(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
         range='{}!A1:C1'.format(sheet_name),
         body=update_headers_body,
         valueInputOption='USER_ENTERED'
     ).execute()
 
-    update_bg = service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
         body=update_bg_color_body
     ).execute()
 
-    update_border = service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
         body=update_border_body
     ).execute()
 
-    update_frozen_row = service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
         body=update_frozen_row_body
     ).execute()
 
-    adjust_len_width = service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
         body=adjust_len_width_body
     ).execute()
 
-def get_sheets(service, ratings_spreadsheet_id):
-    result = service.spreadsheets().get(
-        spreadsheetId=ratings_spreadsheet_id).execute()
-    return [sheet for sheet in result['sheets']]
+def get_sheet_id(service, sheet_name):
+    sheets = get_sheets(service)
+    for sheet in sheets:
+        if sheet['properties']['title'] == sheet_name:
+            return sheet['properties']['sheetId']
+    return None
 
-def main():
-    """Shows basic usage of the Sheets API.
+def write_to_ratings_sheet(service, row_data, start_row_index, end_row_index, sheet_name):
+    sheet_id = get_sheet_id(service, sheet_name)
 
-    Creates a Sheets API service object and prints the names and majors of
-    students in a sample spreadsheet:
-    https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
-    """
+    write_body = {
+        'majorDimension': 'ROWS',
+        'values': row_data
+    }
 
-    service = create_service()
-    # get_sheet_names(service)
-    get_ratings_sheet_info(service, 'Fall 2018')
+    set_bold_font_body = {
+        'requests': [{
+            'repeatCell': {
+                'range': {
+                    'sheetId': sheet_id,
+                    'startRowIndex': start_row_index,
+                    'endRowIndex': end_row_index,
+                    'startColumnIndex': 1,
+                    'endColumnIndex': 3
+                },
+                'cell': {
+                    'userEnteredFormat': {
+                        'horizontalAlignment': 'CENTER',
+                        'verticalAlignment': 'MIDDLE',
+                        'wrapStrategy': 'WRAP',
+                        'textFormat': {
+                            'fontSize': 12,
+                            'bold': True
+                        }
+                    }
+                },
+                'fields': 'userEnteredFormat(, textFormat, horizontalAlignment, verticalAlignment, wrapStrategy)'
+            }
+        }]
+    }
 
-if __name__ == '__main__':
-    main()
+    set_unbold_font_body = {
+        'requests': [{
+            'repeatCell': {
+                'range': {
+                    'sheetId': sheet_id,
+                    'startRowIndex': start_row_index,
+                    'endRowIndex': end_row_index,
+                    'startColumnIndex': 0,
+                    'endColumnIndex': 1
+                },
+                'cell': {
+                    'userEnteredFormat': {
+                        'horizontalAlignment': 'CENTER',
+                        'verticalAlignment': 'MIDDLE',
+                        'wrapStrategy': 'WRAP',
+                        'textFormat': {
+                            'fontSize': 12,
+                            'bold': False
+                        }
+                    }
+                },
+                'fields': 'userEnteredFormat(, textFormat, horizontalAlignment, verticalAlignment, wrapStrategy)'
+            }
+        }]
+    }
+
+    update_border_body = {
+        'requests': [{
+            'updateBorders': {
+                'range': {
+                    'sheetId': sheet_id,
+                    'startRowIndex': start_row_index,
+                    'endRowIndex': end_row_index,
+                    'startColumnIndex': 0,
+                    'endColumnIndex': 3
+                },
+                'top': {
+                    'style': 'SOLID',
+                    'width': 1,
+                },
+                'bottom': {
+                    'style': 'SOLID',
+                    'width': 1,
+                },
+                'left': {
+                    'style': 'SOLID',
+                    'width': 1,
+                },
+                'right': {
+                    'style': 'SOLID',
+                    'width': 1,
+                },
+                'innerVertical': {
+                    'style': 'SOLID',
+                    'width': 1,
+                },
+                'innerHorizontal': {
+                    'style': 'SOLID',
+                    'width': 1,
+                }
+            }
+        }]
+    }
+
+    service.spreadsheets().values().update(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
+        range='{}!A2:C'.format(sheet_name),
+        body=write_body,
+        valueInputOption='USER_ENTERED'
+    ).execute()
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
+        body=set_bold_font_body
+    ).execute()
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
+        body=set_unbold_font_body
+    ).execute()
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=RATINGS_SPREADSHEET_ID,
+        body=update_border_body
+    ).execute()
+

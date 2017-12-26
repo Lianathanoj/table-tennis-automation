@@ -4,6 +4,7 @@
 import xlsxwriter
 import shared_functions
 import google_sheets_functions
+import operator
 
 class Player:
     def __init__(self, player_name, player_rating):
@@ -25,8 +26,8 @@ class Group:
         self.players = []
         self.group_winner = None
 
-    def get_info(self, league_roster):
-        if not league_roster:
+    def get_info(self, league_roster_dict):
+        if not league_roster_dict:
             for i in range(1, self.num_players + 1):
                 player_name = input("Name of person {} in {}: ".format(i, self.group_name)).title()
                 player_rating = int(input("Rating of person {} in {}: ".format(i, self.group_name)))
@@ -36,11 +37,12 @@ class Group:
         else:
             for i in range(1, self.num_players + 1):
                 player_name = input("Name of person {} in {}: ".format(i, self.group_name)).title()
-                rating = league_roster.get(player_name)
+                rating = league_roster_dict.get(player_name)
                 if rating:
                     player_rating = int(rating)
                 else:
                     player_rating = int(input("Rating of person {} in {}: ".format(i, self.group_name)))
+                    league_roster_dict[player_name] = player_rating
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
                 print(str(player_info) + " has been added to {}.\n".format(self.group_name))
@@ -415,7 +417,7 @@ def set_up_summary_sheet(workbook, summary_main_title_format, summary_descriptio
 
     return summary_sheet
 
-def get_league_roster(file_name):
+def get_ratings_sheet_name(file_name):
     semester_month_dict = {(8, 12): 'Fall', (1, 4): 'Spring', (5, 7): 'Summer'}
     date_long, date_short, is_tryouts = shared_functions.reformat_file_name(file_name)
     month, day, year = date_long
@@ -425,13 +427,7 @@ def get_league_roster(file_name):
         if month in range(month_ranges[0], month_ranges[1] + 1):
             sheet_name = '{} {}'.format(semester_month_dict[month_ranges], year)
 
-    service = google_sheets_functions.create_service()
-    league_roster = google_sheets_functions.get_ratings_sheet_info(service, sheet_name)
-
-    league_roster_dict = {league_roster[1][index]: league_roster[2][index]
-                          for index, element in enumerate(league_roster[0])}
-
-    return league_roster, league_roster_dict
+    return sheet_name
 
 def generate_workbook():
     print("Basic rules for league at GTTTA:\n")
@@ -446,7 +442,10 @@ def generate_workbook():
     groups = Groups()
     groups.construct_groups()
     group_list = groups.group_list
-    league_roster_list, league_roster_dict = get_league_roster(file_name)
+    service = google_sheets_functions.create_service()
+    ratings_sheet_name = get_ratings_sheet_name(file_name)
+    league_roster_list, league_roster_dict = google_sheets_functions.get_league_roster(service, ratings_sheet_name)
+    ratings_sheet_start_row_index = len(league_roster_dict) + 1
 
     for group in group_list:
         group.get_info(league_roster_dict)
@@ -463,6 +462,15 @@ def generate_workbook():
                                      match_winner=result_sheet.match_winner)
         title_row_num = last_row_num + 2
 
+    ratings_sheet_end_row_index = len(league_roster_dict) + 1
+    ratings_sheet_data = [[i + 1, element[0], element[1]] for i, element
+                         in enumerate(sorted(league_roster_dict.items(),
+                                             key=operator.itemgetter(1),
+                                             reverse=True))]
+    google_sheets_functions.write_to_ratings_sheet(service=service, row_data=ratings_sheet_data,
+                                                   start_row_index=ratings_sheet_start_row_index,
+                                                   end_row_index=ratings_sheet_end_row_index,
+                                                   sheet_name=ratings_sheet_name)
     workbook.close()
     return file_name
 
