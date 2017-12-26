@@ -5,6 +5,7 @@ import xlsxwriter
 import shared_functions
 import google_sheets_functions
 import operator
+import datetime
 
 class Player:
     def __init__(self, player_name, player_rating):
@@ -31,19 +32,19 @@ class Group:
         print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
         if not league_roster_dict:
             for i in range(1, self.num_players + 1):
-                player_name = input("Name of person {} in {}: ".format(i, self.group_name)).title()
-                player_rating = int(input("Rating of person {} in {}: ".format(i, self.group_name)))
+                player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
+                player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
                 print(str(player_info) + " has been added to {}.\n".format(self.group_name))
         else:
             for i in range(1, self.num_players + 1):
-                player_name = input("Name of person {} in {}: ".format(i, self.group_name)).title()
+                player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
                 rating = league_roster_dict.get(player_name)
                 if rating:
                     player_rating = int(rating)
                 else:
-                    player_rating = int(input("Rating of person {} in {}: ".format(i, self.group_name)))
+                    player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
                     league_roster_dict[player_name] = player_rating
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
@@ -62,26 +63,15 @@ class Groups:
         self.group_list.append(group)
 
     def construct_groups(self):
-        while True:
-            try:
-                self.num_groups = int(input('Number of groups: '))
-                break
-            except ValueError:
-                print('Please input an integer.')
-                continue
+        self.num_groups = correct_input('Number of groups: ', int)
 
         for x in range(self.num_groups):
             group_num = x + 1
             while True:
-                try:
-                    num_players = int(input('How many people were in Group ' + str(group_num) + '? '))
-                except ValueError:
-                    print('Please input an integer.')
-                    continue
+                num_players = correct_input('How many people were in Group ' + str(group_num) + '? ', int)
                 if num_players < 4:
                     print('There has to be at least four people in a group. Try again.')
-                    continue
-                if num_players > 7:
+                elif num_players > 7:
                     print('There cannot be more than seven people in a group. Try again.')
                 else:
                     break
@@ -205,7 +195,8 @@ class ResultSheet:
             player_two_letter = self.match_ordering[index][2]
             player_one = self.group.players[self.letter_dict[player_one_letter]]
             player_two = self.group.players[self.letter_dict[player_two_letter]]
-            match = input(self.match_ordering[index][0] + " versus " + self.match_ordering[index][2] + ": ").strip()
+            match = correct_input(self.match_ordering[index][0] + " versus "
+                          + self.match_ordering[index][2] + ": ", 'match_input')
 
             if len(match) == 0 or (int(match[0]) == int(match[2]) == 0):
                 point_change = 0
@@ -305,12 +296,46 @@ class SummarySheet:
                 self.player_name_col_len = len_longest_name + 1
                 self.worksheet.set_column(2, 2, self.player_name_col_len)
 
+def correct_input(input_text, var_type):
+    type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
+                 'date_input': "date input, e.g. 'MM-DD-YY' for normal leagues or 'MM-DD-YY Tryouts' for tryouts."}
+    if var_type == 'date_input':
+        date_input = input(input_text).strip().replace('\'', '')
+        while True:
+            try:
+                date_long, date_short, is_tryouts = tuple(shared_functions.reformat_file_name(date_input, 'try'))
+                month, day, year = tuple([int(element) for element in date_short])
+                if datetime.datetime(year=year, month=month, day=day):
+                    return '{}-{}-{} Tryouts'.format(month, day, year)\
+                        if is_tryouts else '{}-{}-{}'.format(month, day, year)
+            except:
+                print("Please input the correct format for the {}".format(type_dict[var_type]))
+                date_input = input('Date: ')
+    elif var_type == 'match_input':
+        while True:
+            try:
+                match_input = input(input_text).strip().replace('.', '')
+                if len(match_input) == 2 and match_input[0].isdigit() and match_input[1].isdigit():
+                    return match_input[0] + ":" + match_input[1]
+                elif len(match_input) == 3 and match_input[0].isdigit() and match_input[2].isdigit():
+                    return match_input
+                else:
+                    print("Please input the correct format for the {}".format(type_dict[var_type]))
+            except:
+                print("Please input the correct format for the {}".format(type_dict[var_type]))
+    else:
+        while True:
+            try:
+                return var_type(input(input_text))
+            except ValueError:
+                print("Please input the correct value of type {}.".format(type_dict[var_type]))
+
 def len_longest_substring(string):
     return len(max(string.split(' '), key=len))
 
 def set_up_workbook():
-    print('Please input the date this league took place in MM-DD-YY format.')
-    name = input("If you are inputting results for tryouts, input 'MM-DD-YY Tryouts': ").strip().replace('\'', '')
+    name = correct_input("Please input the date this league took place in 'MM-DD-YY format.\n"
+                         "If you are inputting results for tryouts, input 'MM-DD-YY Tryouts': ", 'date_input')
     print('')
     if '.xlsx' not in name:
         file_name = name + '.xlsx'
@@ -444,6 +469,8 @@ def generate_workbook():
     groups = Groups()
     groups.construct_groups()
     group_list = groups.group_list
+
+    print('\nLoading roster, please wait..')
     service = google_sheets_functions.create_service()
     ratings_sheet_name = get_ratings_sheet_name(file_name)
     league_roster_list, league_roster_dict = google_sheets_functions.get_league_roster(service, ratings_sheet_name)
@@ -465,17 +492,17 @@ def generate_workbook():
         title_row_num = last_row_num + 2
 
     print('_______________________________________________________________________________')
+    workbook.close()
 
     ratings_sheet_end_row_index = len(league_roster_dict) + 1
     ratings_sheet_data = [[i + 1, element[0], element[1]] for i, element
-                         in enumerate(sorted(league_roster_dict.items(),
-                                             key=operator.itemgetter(1),
-                                             reverse=True))]
+                          in enumerate(sorted(league_roster_dict.items(),
+                                              key=operator.itemgetter(1),
+                                              reverse=True))]
     google_sheets_functions.write_to_ratings_sheet(service=service, row_data=ratings_sheet_data,
                                                    start_row_index=ratings_sheet_start_row_index,
                                                    end_row_index=ratings_sheet_end_row_index,
                                                    sheet_name=ratings_sheet_name)
-    workbook.close()
     return file_name
 
 if __name__ == "__main__":

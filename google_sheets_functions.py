@@ -70,8 +70,9 @@ def get_ratings_sheet_info(service, sheet_name):
             spreadsheetId=RATINGS_SPREADSHEET_ID, range=range, majorDimension='COLUMNS').execute()
         values = result.get('values', [])
         if not values:
-            print('No data found.')
+            print('No roster found for this semester.\n')
         else:
+            print('Roster detected.\n')
             return values
     else:
         generate_ratings_sheet(service, sheet_name)
