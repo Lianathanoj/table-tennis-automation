@@ -79,8 +79,11 @@ def get_ratings_sheet_info(service, sheet_name):
 
 def get_league_roster(service, ratings_sheet_name):
     league_roster = get_ratings_sheet_info(service, ratings_sheet_name)
-    league_roster_dict = {league_roster[1][index]: int(league_roster[2][index])
-                          for index, element in enumerate(league_roster[0])}
+    if league_roster:
+        league_roster_dict = {league_roster[1][index]: int(league_roster[2][index])
+                              for index, element in enumerate(league_roster[0])}
+    else:
+        league_roster_dict = {}
     return league_roster, league_roster_dict
 
 def generate_ratings_sheet(service, sheet_name):
