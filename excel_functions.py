@@ -27,6 +27,8 @@ class Group:
         self.group_winner = None
 
     def get_info(self, league_roster_dict):
+        print('_______________________________________________________________________________\n')
+        print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
         if not league_roster_dict:
             for i in range(1, self.num_players + 1):
                 player_name = input("Name of person {} in {}: ".format(i, self.group_name)).title()
@@ -197,9 +199,10 @@ class ResultSheet:
         self.sheet_merger()
         self.header_writer()
 
-        print('\nPlease input the game scores for {}.'.format(self.group.group_name))
-        print('\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2')
-        print('In the case of B losing to D 2-3, input 2:3\n')
+        print('-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n')
+        print('Please input the game scores for {}.'.format(self.group.group_name))
+        print("\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
+        print("In the case of B losing to D 2-3, input 2:3.\n")
 
         for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
             player_one_letter = self.match_ordering[index][0]
@@ -242,7 +245,6 @@ class ResultSheet:
         for player in self.group.players:
             league_roster_dict[player.player_name] = player.final_rating
 
-        print('\n')
         self.match_winner = self.get_match_winner()
 
 class SummarySheet:
@@ -311,8 +313,9 @@ def len_longest_substring(string):
     return len(max(string.split(' '), key=len))
 
 def set_up_workbook():
-    name = input("\nPlease input the date this league took place in MM-DD-YY format. If you are inputting results for "
-                 "tryouts, input 'MM-DD-YY Tryouts': ").strip().replace('\'', '')
+    print('Please input the date this league took place in MM-DD-YY format.')
+    name = input("If you are inputting results for tryouts, input 'MM-DD-YY Tryouts': ").strip().replace('\'', '')
+    print('')
     if '.xlsx' not in name:
         file_name = name + '.xlsx'
     workbook = xlsxwriter.Workbook(file_name)
@@ -433,6 +436,7 @@ def get_ratings_sheet_name(file_name):
     return sheet_name
 
 def generate_workbook():
+    print('_______________________________________________________________________________')
     print("Basic rules for league at GTTTA:\n")
     print("There can be no more than four groups.")
     print("There can be no more than seven players in any group.")
@@ -464,6 +468,8 @@ def generate_workbook():
                                      first_data_row_num=first_data_row_num,
                                      match_winner=result_sheet.match_winner)
         title_row_num = last_row_num + 2
+
+    print('_______________________________________________________________________________')
 
     ratings_sheet_end_row_index = len(league_roster_dict) + 1
     ratings_sheet_data = [[i + 1, element[0], element[1]] for i, element
