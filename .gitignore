@@ -1,6 +1,9 @@
 sheets_client_secret.json
 drive_client_secret.json
 __pycache__/
+build/
+dist/
 *.xlsx
 tests.txt
 .idea
+*.spec

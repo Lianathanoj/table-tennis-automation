@@ -33,7 +33,7 @@ class Group:
         if not league_roster_dict:
             for i in range(1, self.num_players + 1):
                 player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
-                player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
+                player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), 'rating_input')
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
                 print(str(player_info) + " has been added to {}.\n".format(self.group_name))
@@ -44,7 +44,8 @@ class Group:
                 if rating:
                     player_rating = int(rating)
                 else:
-                    player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
+                    player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name),
+                                                  'rating_input')
                     league_roster_dict[player_name] = player_rating
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
@@ -298,7 +299,8 @@ class SummarySheet:
 
 def correct_input(input_text, var_type):
     type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
-                 'date_input': "date input, e.g. 'MM-DD-YY' for normal leagues or 'MM-DD-YY Tryouts' for tryouts."}
+                 'date_input': "date input, e.g. 'MM-DD-YY' for normal leagues or 'MM-DD-YY Tryouts' for tryouts.",
+                 'rating_input': 'rating input.'}
     if var_type == 'date_input':
         date_input = input(input_text).strip().replace('\'', '')
         while True:
@@ -323,18 +325,32 @@ def correct_input(input_text, var_type):
                     print("Please input the correct format for the {}".format(type_dict[var_type]))
             except:
                 print("Please input the correct format for the {}".format(type_dict[var_type]))
-    else:
+    elif var_type == 'rating_input':
         while True:
             try:
-                return var_type(input(input_text))
+                rating_input = input(input_text).replace('-', '').strip()
+                if len(rating_input) < 5 and rating_input.isdigit():
+                    return abs(int(rating_input))
+                else:
+                    print("Please input the correct format for the {}".format(type_dict[var_type]))
+            except:
+                print("Please input the correct format for the {}".format(type_dict[var_type]))
+    else:
+        value = input(input_text).strip()
+        while True:
+            try:
+                if value == '':
+                    return int(value)
+                return var_type(value)
             except ValueError:
                 print("Please input the correct value of type {}.".format(type_dict[var_type]))
+                value = input(input_text).strip()
 
 def len_longest_substring(string):
     return len(max(string.split(' '), key=len))
 
 def set_up_workbook():
-    name = correct_input("Please input the date this league took place in 'MM-DD-YY format.\n"
+    name = correct_input("Please input the date this league took place in 'MM-DD-YY' format.\n"
                          "If you are inputting results for tryouts, input 'MM-DD-YY Tryouts': ", 'date_input')
     print('')
     if '.xlsx' not in name:
