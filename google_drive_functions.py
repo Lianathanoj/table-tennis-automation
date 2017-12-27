@@ -1,10 +1,9 @@
 from __future__ import print_function
 import shared_functions
 import httplib2
-import os
 
 from pprint import pprint
-from apiclient import discovery
+from apiclient import discovery, errors
 from apiclient.http import MediaFileUpload
 from datetime import date as datetime_date
 from webbrowser import open
@@ -14,11 +13,30 @@ from webbrowser import open
 SCOPES = 'https://www.googleapis.com/auth/drive'
 CLIENT_SECRET_FILE = 'drive_client_secret.json'
 APPLICATION_NAME = 'TT Automation - Drive API'
+CACHE_FILE_NAME = 'drive-api.json'
+
+RESULTS_FOLDER_ID = '1EfvFgtENNJ4LdY4FqGtJrYUbPfppm3C9'
+
+def get_credentials():
+    credentials = shared_functions.get_credentials(cache_file_name=CACHE_FILE_NAME,
+                                                   client_secret_file=CLIENT_SECRET_FILE,
+                                                   scopes=SCOPES, application_name=APPLICATION_NAME)
+    return credentials
+
+def create_service():
+    credentials = get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('drive', 'v3', http=http)
+    return service
+
+def create_permissive_service():
+    service = create_service()
+    shared_functions.check_permissions(service, RESULTS_FOLDER_ID, CACHE_FILE_NAME)
+    return service
 
 def determine_year_folder_id(service, file_name):
-    results_folder_id = '0B9Mt_sNXCmNzbTVici1WYk1tcmc'
     results = service.files().list(
-        q="'{}' in parents".format(results_folder_id), fields="nextPageToken, files(id, name)").execute()
+        q="'{}' in parents".format(RESULTS_FOLDER_ID), fields="nextPageToken, files(id, name)").execute()
     year_folders = results.get('files', [])
     if year_folders:
         month, day, year = file_name
@@ -77,7 +95,7 @@ def generate_year_folder_id(service, file_name):
         folder_name = '{}-{}'.format(year, year + 1)
 
     file_metadata = {
-        'parents': ['0B9Mt_sNXCmNzbTVici1WYk1tcmc'],
+        'parents': [RESULTS_FOLDER_ID],
         'name': folder_name,
         'mimeType': 'application/vnd.google-apps.folder'
     }
@@ -105,15 +123,7 @@ def upload_file(service, drive_file_name, excel_file_name, semester_folder_id):
     service.revisions().update(fileId=file['id'], revisionId=1, body={'published': True, 'publishAuto': True}).execute()
     return file['id']
 
-def get_credentials():
-    credentials = shared_functions.get_credentials(cache_name='drive-api.json', client_secret_file=CLIENT_SECRET_FILE,
-                                                   scopes=SCOPES, application_name=APPLICATION_NAME)
-    return credentials
-
-def main(file_name, credentials):
-    http = credentials.authorize(httplib2.Http())
-    service = discovery.build('drive', 'v3', http=http)
-
+def main(file_name, service):
     date_long, date_short, is_tryouts = shared_functions.reformat_file_name(file_name)
     year_folder_id = determine_year_folder_id(service=service, file_name=date_long)
     semester_folder_id = determine_semester_folder_id(service=service, file_name=date_long, is_tryouts=is_tryouts,

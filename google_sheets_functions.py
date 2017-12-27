@@ -1,5 +1,5 @@
 from __future__ import print_function
-from apiclient import discovery
+from apiclient import discovery, errors
 from pprint import pprint
 import shared_functions
 import httplib2
@@ -9,11 +9,13 @@ import httplib2
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 CLIENT_SECRET_FILE = 'sheets_client_secret.json'
 APPLICATION_NAME = 'TT Automation - Sheets API'
+CACHE_FILE_NAME = 'sheets-api.json'
 
 RATINGS_SPREADSHEET_ID = '1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0'
 
 def create_service():
-    credentials = shared_functions.get_credentials(cache_name='sheets-api.json', client_secret_file=CLIENT_SECRET_FILE,
+    credentials = shared_functions.get_credentials(cache_file_name=CACHE_FILE_NAME,
+                                                   client_secret_file=CLIENT_SECRET_FILE,
                                                    scopes=SCOPES, application_name=APPLICATION_NAME)
     http = credentials.authorize(httplib2.Http())
     discoveryUrl = 'https://sheets.googleapis.com/$discovery/rest?version=v4'
@@ -21,9 +23,13 @@ def create_service():
     return service
 
 def get_sheets(service):
-    result = service.spreadsheets().get(
-        spreadsheetId=RATINGS_SPREADSHEET_ID).execute()
-    return [sheet for sheet in result['sheets']]
+    try:
+        result = service.spreadsheets().get(
+            spreadsheetId=RATINGS_SPREADSHEET_ID).execute()
+        return [sheet for sheet in result['sheets']]
+    except errors.HttpError:
+        print("You don't have permission to access these files.")
+        shared_functions.remove_file_from_cache(CACHE_FILE_NAME)
 
 def get_ratings_sheet_info(service, sheet_name):
     sheets = get_sheets(service)
@@ -34,11 +40,12 @@ def get_ratings_sheet_info(service, sheet_name):
             spreadsheetId=RATINGS_SPREADSHEET_ID, range=range, majorDimension='COLUMNS').execute()
         values = result.get('values', [])
         if not values:
-            print('No roster found for this semester.\n')
+            print('No roster found for this semester.')
         else:
-            print('Roster detected.\n')
+            print('Roster detected.')
             return values
     else:
+        print('No roster found for this semester.')
         generate_ratings_sheet(service, sheet_name)
     return None
 

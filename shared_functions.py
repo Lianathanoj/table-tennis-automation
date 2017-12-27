@@ -2,10 +2,11 @@ from warnings import filterwarnings
 filterwarnings("ignore")
 
 import os, sys
-from re import split
+from apiclient import errors
 from oauth2client.file import Storage
 from oauth2client import client
 from oauth2client import tools
+from re import split
 
 try:
     import argparse
@@ -21,7 +22,29 @@ class HiddenPrints:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout = self._original_stdout
 
-def get_credentials(cache_name, client_secret_file, scopes, application_name):
+def check_permissions(service, folder_id, cache_file_name):
+    try:
+        with HiddenPrints():
+            service.permissions().list(fileId=folder_id).execute()
+    except errors.HttpError:
+        print("You don't have permission to access these files.")
+        remove_file_from_cache(cache_file_name)
+
+def remove_file_from_cache(cache_file_name):
+    credential_path = get_credential_path(cache_file_name)
+    print('Removing credentials from {}'.format(credential_path))
+    os.remove(credential_path)
+    sys.exit()
+
+def get_credential_path(cache_file_name):
+    home_dir = os.path.expanduser('~')
+    credential_dir = os.path.join(home_dir, '.credentials')
+    if not os.path.exists(credential_dir):
+        os.makedirs(credential_dir)
+    credential_path = os.path.join(credential_dir, cache_file_name)
+    return credential_path
+
+def get_credentials(cache_file_name, client_secret_file, scopes, application_name):
     """Gets valid user credentials from storage.
 
     If nothing has been stored, or if the stored credentials are invalid,
@@ -30,12 +53,7 @@ def get_credentials(cache_name, client_secret_file, scopes, application_name):
     Returns:
         Credentials, the obtained credential.
     """
-    home_dir = os.path.expanduser('~')
-    credential_dir = os.path.join(home_dir, '.credentials')
-    if not os.path.exists(credential_dir):
-        os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir, cache_name)
-
+    credential_path = get_credential_path(cache_file_name)
     store = Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
@@ -46,7 +64,7 @@ def get_credentials(cache_name, client_secret_file, scopes, application_name):
                 credentials = tools.run_flow(flow, store, flags)
             else: # Needed only for compatibility with Python 2.6
                 credentials = tools.run(flow, store)
-        print('Storing credentials to ' + credential_path)
+        print('Storing credentials to {}'.format(credential_path))
     return credentials
 
 def file_name_split(file_name):
