@@ -7,6 +7,7 @@ import google_sheets_functions
 import operator
 import datetime
 import sys
+import os
 
 class Player:
     def __init__(self, player_name, player_rating):
@@ -247,7 +248,6 @@ class SummarySheet:
         self.summary_regular_format = summary_regular_format
         self.summary_bold_format = summary_bold_format
         self.name = name
-        self.date = name
         self.player_name_col_len = 15
         self.seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
@@ -261,7 +261,7 @@ class SummarySheet:
         self.worksheet.set_column(6, 6, len_longest_substring('Rating After') + 1)
         self.worksheet.set_column(7, 7, 5)
 
-    def make_table(self, title_row_num, header_row_num, last_row_num, group_num):
+    def make_table(self, title_row_num, header_row_num, group_num):
         self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=6,
                                    data='Group ' + str(group_num), cell_format=self.summary_group_title_format)
         self.worksheet.write(header_row_num, 1, 'Seed', self.summary_header_format)
@@ -303,7 +303,13 @@ def correct_input(input_text, var_type):
                  'date_input': 'date input.', 'rating_input': 'rating input.'}
     pre_input = input(input_text)
     if pre_input.lower() in ['quit', 'q']:
-        sys.exit()
+        try:
+            workbook.close()
+            os.remove(file_name)
+        except:
+            pass
+        finally:
+            sys.exit()
 
     if var_type == 'date_input':
         date_input = pre_input.strip().replace('\'', '')
@@ -318,27 +324,31 @@ def correct_input(input_text, var_type):
                 print("Please input the correct format for the {}".format(type_dict[var_type]))
                 date_input = input('Date: ')
     elif var_type == 'match_input':
+        match_input = pre_input.strip().replace('.', '')
         while True:
             try:
-                match_input = pre_input.strip().replace('.', '')
                 if len(match_input) == 2 and match_input[0].isdigit() and match_input[1].isdigit():
                     return match_input[0] + ":" + match_input[1]
                 elif len(match_input) == 3 and match_input[0].isdigit() and match_input[2].isdigit():
                     return match_input
                 else:
                     print("Please input the correct format for the {}".format(type_dict[var_type]))
+                    match_input = input(input_text)
             except:
                 print("Please input the correct format for the {}".format(type_dict[var_type]))
+                match_input = input(input_text)
     elif var_type == 'rating_input':
+        rating_input = pre_input.replace('-', '').strip()
         while True:
             try:
-                rating_input = pre_input.replace('-', '').strip()
                 if len(rating_input) < 5 and rating_input.isdigit():
                     return abs(int(rating_input))
                 else:
                     print("Please input the correct format for the {}".format(type_dict[var_type]))
+                    rating_input = input(input_text)
             except:
                 print("Please input the correct format for the {}".format(type_dict[var_type]))
+                rating_input = input(input_text)
     else:
         value = pre_input.strip()
         while True:
@@ -461,7 +471,6 @@ def set_up_summary_sheet(workbook, summary_main_title_format, summary_descriptio
                                  summary_group_title_format, summary_header_format, summary_regular_format,
                                  summary_bold_format, name)
     summary_sheet.set_columns()
-
     return summary_sheet
 
 def get_ratings_sheet_name(file_name):
@@ -483,6 +492,7 @@ def generate_workbook():
     print("There can be no less than four people per group.")
     print("Type 'quit' or 'q' to exit the program.\n")
 
+    global file_name, workbook
     all_info, workbook, file_name = set_up_workbook()
     summary_sheet = set_up_summary_sheet(*all_info['summary_info'])
     title_row_num = 4
@@ -505,8 +515,7 @@ def generate_workbook():
         header_row_num = title_row_num + 1
         first_data_row_num = header_row_num + 1
         last_row_num = header_row_num + group.num_players
-        summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num,
-                                 last_row_num=last_row_num, group_num=group.group_num)
+        summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num, group_num=group.group_num)
         summary_sheet.write_to_table(group_size=group.num_players, group=group,
                                      first_data_row_num=first_data_row_num,
                                      match_winner=result_sheet.match_winner)
