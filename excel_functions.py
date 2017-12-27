@@ -6,6 +6,7 @@ import shared_functions
 import google_sheets_functions
 import operator
 import datetime
+import sys
 
 class Player:
     def __init__(self, player_name, player_rating):
@@ -33,7 +34,7 @@ class Group:
         if not league_roster_dict:
             for i in range(1, self.num_players + 1):
                 player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
-                player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
+                player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), 'rating_input')
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
                 print(str(player_info) + " has been added to {}.\n".format(self.group_name))
@@ -44,7 +45,8 @@ class Group:
                 if rating:
                     player_rating = int(rating)
                 else:
-                    player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), int)
+                    player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name),
+                                                  'rating_input')
                     league_roster_dict[player_name] = player_rating
                 player_info = Player(player_name=player_name, player_rating=player_rating)
                 self.players.append(player_info)
@@ -298,9 +300,13 @@ class SummarySheet:
 
 def correct_input(input_text, var_type):
     type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
-                 'date_input': "date input, e.g. 'MM-DD-YY' for normal leagues or 'MM-DD-YY Tryouts' for tryouts."}
+                 'date_input': 'date input.', 'rating_input': 'rating input.'}
+    pre_input = input(input_text)
+    if pre_input.lower() in ['quit', 'q']:
+        sys.exit()
+
     if var_type == 'date_input':
-        date_input = input(input_text).strip().replace('\'', '')
+        date_input = pre_input.strip().replace('\'', '')
         while True:
             try:
                 date_long, date_short, is_tryouts = tuple(shared_functions.reformat_file_name(date_input, 'try'))
@@ -314,7 +320,7 @@ def correct_input(input_text, var_type):
     elif var_type == 'match_input':
         while True:
             try:
-                match_input = input(input_text).strip().replace('.', '')
+                match_input = pre_input.strip().replace('.', '')
                 if len(match_input) == 2 and match_input[0].isdigit() and match_input[1].isdigit():
                     return match_input[0] + ":" + match_input[1]
                 elif len(match_input) == 3 and match_input[0].isdigit() and match_input[2].isdigit():
@@ -323,18 +329,32 @@ def correct_input(input_text, var_type):
                     print("Please input the correct format for the {}".format(type_dict[var_type]))
             except:
                 print("Please input the correct format for the {}".format(type_dict[var_type]))
-    else:
+    elif var_type == 'rating_input':
         while True:
             try:
-                return var_type(input(input_text))
+                rating_input = pre_input.replace('-', '').strip()
+                if len(rating_input) < 5 and rating_input.isdigit():
+                    return abs(int(rating_input))
+                else:
+                    print("Please input the correct format for the {}".format(type_dict[var_type]))
+            except:
+                print("Please input the correct format for the {}".format(type_dict[var_type]))
+    else:
+        value = pre_input.strip()
+        while True:
+            try:
+                if value == '':
+                    return int(value)
+                return var_type(value)
             except ValueError:
                 print("Please input the correct value of type {}.".format(type_dict[var_type]))
+                value = input(input_text).strip()
 
 def len_longest_substring(string):
     return len(max(string.split(' '), key=len))
 
 def set_up_workbook():
-    name = correct_input("Please input the date this league took place in 'MM-DD-YY format.\n"
+    name = correct_input("Please input the date this league took place in 'MM-DD-YY' format.\n"
                          "If you are inputting results for tryouts, input 'MM-DD-YY Tryouts': ", 'date_input')
     print('')
     if '.xlsx' not in name:
@@ -460,7 +480,8 @@ def generate_workbook():
     print('_______________________________________________________________________________')
     print("Basic rules for league at GTTTA:\n")
     print("There can be no more than seven players in any group.")
-    print("There can be no less than four people per group.\n")
+    print("There can be no less than four people per group.")
+    print("Type 'quit' or 'q' to exit the program.\n")
 
     all_info, workbook, file_name = set_up_workbook()
     summary_sheet = set_up_summary_sheet(*all_info['summary_info'])
@@ -470,8 +491,8 @@ def generate_workbook():
     groups.construct_groups()
     group_list = groups.group_list
 
-    print('\nLoading roster, please wait..')
-    service = google_sheets_functions.create_service()
+    print('\nLoading roster, please wait...')
+    service= google_sheets_functions.create_service()
     ratings_sheet_name = get_ratings_sheet_name(file_name)
     league_roster_list, league_roster_dict = google_sheets_functions.get_league_roster(service, ratings_sheet_name)
     ratings_sheet_start_row_index = len(league_roster_dict) + 1
@@ -492,8 +513,9 @@ def generate_workbook():
         title_row_num = last_row_num + 2
 
     print('_______________________________________________________________________________')
-    workbook.close()
+    print('\nOpening league sheet...')
 
+    workbook.close()
     ratings_sheet_end_row_index = len(league_roster_dict) + 1
     ratings_sheet_data = [[i + 1, element[0], element[1]] for i, element
                           in enumerate(sorted(league_roster_dict.items(),
