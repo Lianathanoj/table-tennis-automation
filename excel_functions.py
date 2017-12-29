@@ -23,25 +23,27 @@ class Player:
         return str(self.player_name) + " (" + str(self.player_rating) + ")"
 
 class Group:
+    letter_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
     def __init__(self, group_num, num_players):
         self.group_num = group_num
         self.group_name = "Group {}".format(self.group_num)
         self.num_players = num_players
         self.players = []
+        self.sorted_players = []
         self.group_winner = None
 
     def get_info(self, league_roster_dict, backtrack=False):
-        print('_______________________________________________________________________________\n')
-        print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
         if backtrack:
-            self.players.pop()
             i = len(self.players) - 1
         else:
+            print('_______________________________________________________________________________\n')
+            print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
             i = 0
         if not league_roster_dict:
             go_back = False
             while 0 <= i < self.num_players:
-                if go_back:
+                if go_back or backtrack:
                     j = 1
                 else:
                     j = 0
@@ -57,7 +59,7 @@ class Group:
                                 if i < len(self.players) - 1:
                                     print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
                             else:
-                                self.players = []
+                                print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
                         else:
                             j += 1
                     elif j == 1:
@@ -66,7 +68,7 @@ class Group:
                         if player_rating == 'back':
                             j -= 1
                         else:
-                            if go_back:
+                            if go_back or backtrack:
                                 old_player_info = copy.deepcopy(self.players[i])
                                 self.players[i].player_rating = player_rating
                                 print("{} has been amended to {}.\n".format(old_player_info, self.players[i]))
@@ -104,7 +106,7 @@ class Group:
                                 if i < len(self.players) - 1:
                                     print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
                             else:
-                                self.players = []
+                                print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
                         else:
                             j += 1
                     elif j == 1:
@@ -145,10 +147,13 @@ class Group:
             if i < 0:
                 return 'backtrack'
         self.sort_ratings()
+        for index, player in enumerate(self.sorted_players):
+            print('{}: {}'.format(Group.letter_list[index], player))
+        print('')
         return 'continue'
 
     def sort_ratings(self):
-        self.players = sorted(self.players, key=lambda player: player.player_rating, reverse=True)
+        self.sorted_players = sorted(self.players, key=lambda player: player.player_rating, reverse=True)
 
 class Groups:
     def __init__(self, num_groups=0, group_list=[]):
@@ -167,7 +172,10 @@ class Groups:
             index = len(self.group_list) - 1
             self.remove_group()
         else:
-            self.num_groups = correct_input('Number of groups: ', int)
+            num_groups = correct_input('Number of groups: ', int)
+            while num_groups == 'back':
+                num_groups = correct_input('Try again. Number of groups: ', int)
+            self.num_groups = num_groups
             index = 0
 
         while 0 <= index < self.num_groups:
@@ -217,9 +225,9 @@ class ResultSheet:
         self.match_list = []
 
     def get_match_winner(self):
-        most_matches_won = max(self.group.players, key=lambda player: player.matches_won).matches_won
+        most_matches_won = max(self.group.sorted_players, key=lambda player: player.matches_won).matches_won
         players_most_matches = list(filter(lambda player: player.matches_won == most_matches_won,
-                                               self.group.players))
+                                           self.group.sorted_players))
         most_games_won = max(players_most_matches, key=lambda player: player.games_won).games_won
         players_most_matches_games = list(filter(lambda player: player.games_won == most_games_won,
                                                players_most_matches))
@@ -282,7 +290,7 @@ class ResultSheet:
         self.sheet.set_column(3, 3, len_longest_substring('Rating Before') + 1)
         self.sheet.set_column(4, 4, len_longest_substring('Point Change') + 1)
 
-        for player in self.group.players:
+        for player in self.group.sorted_players:
             len_player_name = len(player.player_name)
             if len_player_name > self.player_name_col_len:
                 self.player_name_col_len = len_player_name + 2
@@ -301,8 +309,8 @@ class ResultSheet:
         for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
             player_one_letter = self.match_ordering[index][0]
             player_two_letter = self.match_ordering[index][2]
-            player_one = self.group.players[ResultSheet.letter_dict[player_one_letter]]
-            player_two = self.group.players[ResultSheet.letter_dict[player_two_letter]]
+            player_one = self.group.sorted_players[ResultSheet.letter_dict[player_one_letter]]
+            player_two = self.group.sorted_players[ResultSheet.letter_dict[player_two_letter]]
             match = matches[index]
 
             if len(match) == 0 or (int(match[0]) == int(match[2]) == 0):
@@ -336,7 +344,7 @@ class ResultSheet:
             player_two.final_rating -= point_change
             player_two.rating_change -= point_change
 
-        for player in self.group.players:
+        for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
 
         self.match_winner = self.get_match_winner()
@@ -387,18 +395,18 @@ class SummarySheet:
 
         for i in range(0, group_size):
             row_num = i + first_data_row_num
-            player_name = group.players[i].player_name
-            if group.players[i] is match_winner:
+            player_name = group.sorted_players[i].player_name
+            if group.sorted_players[i] is match_winner:
                 player_name += "**"
 
             self.worksheet.write(row_num, 1, SummarySheet.seed_letters[i], self.summary_regular_format)
             self.worksheet.write(row_num, 2, player_name, self.summary_bold_format)
-            self.worksheet.write(row_num, 3, group.players[i].player_rating, self.summary_regular_format)
-            self.worksheet.write(row_num, 4, group.players[i].matches_won, self.summary_regular_format)
-            self.worksheet.write(row_num, 5, group.players[i].rating_change, self.summary_regular_format)
-            self.worksheet.write(row_num, 6, group.players[i].final_rating, self.summary_bold_format)
+            self.worksheet.write(row_num, 3, group.sorted_players[i].player_rating, self.summary_regular_format)
+            self.worksheet.write(row_num, 4, group.sorted_players[i].matches_won, self.summary_regular_format)
+            self.worksheet.write(row_num, 5, group.sorted_players[i].rating_change, self.summary_regular_format)
+            self.worksheet.write(row_num, 6, group.sorted_players[i].final_rating, self.summary_bold_format)
 
-            len_longest_name = len_longest_substring(group.players[i].player_name)
+            len_longest_name = len_longest_substring(group.sorted_players[i].player_name)
             if len_longest_name > self.player_name_col_len:
                 self.player_name_col_len = len_longest_name + 1
                 self.worksheet.set_column(2, 2, self.player_name_col_len)
@@ -675,7 +683,8 @@ def generate_workbook():
         header_row_num = title_row_num + 1
         first_data_row_num = header_row_num + 1
         last_row_num = header_row_num + group.num_players
-        summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num, group_num=group.group_num)
+        summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num,
+                                 group_num=group.group_num)
         summary_sheet.write_to_table(group_size=group.num_players, group=group,
                                      first_data_row_num=first_data_row_num,
                                      match_winner=result_sheet.match_winner)
