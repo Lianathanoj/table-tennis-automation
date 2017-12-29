@@ -30,9 +30,14 @@ class Group:
         self.players = []
         self.group_winner = None
 
-    def get_info(self, league_roster_dict, i=0, backtrack=False):
+    def get_info(self, league_roster_dict, backtrack=False):
         print('_______________________________________________________________________________\n')
         print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
+        if backtrack:
+            self.players.pop()
+            i = len(self.players) - 1
+        else:
+            i = 0
         if not league_roster_dict:
             go_back = False
             while 0 <= i < self.num_players:
@@ -42,7 +47,8 @@ class Group:
                     j = 0
                 while 0 <= j < 2:
                     if j == 0:
-                        player_name = correct_input("Name of person {} in {}: ".format(i + 1, self.group_name), str).title()
+                        player_name = correct_input("Name of person {} in {}: "
+                                                    .format(i + 1, self.group_name), str).title()
                         if player_name.lower() == 'back':
                             i -= 1
                             j -= 1
@@ -55,7 +61,8 @@ class Group:
                         else:
                             j += 1
                     elif j == 1:
-                        player_rating = correct_input("Rating of person {} in {}: ".format(i + 1, self.group_name), 'rating_input')
+                        player_rating = correct_input("Rating of person {} in {}: "
+                                                      .format(i + 1, self.group_name), 'rating_input')
                         if player_rating == 'back':
                             j -= 1
                         else:
@@ -83,7 +90,8 @@ class Group:
                     j = 0
                 while 0 <= j < 2:
                     if j == 0:
-                        player_name = correct_input("Name of person {} in {}: ".format(i + 1, self.group_name), str).title()
+                        player_name = correct_input("Name of person {} in {}: "
+                                                    .format(i + 1, self.group_name), str).title()
                         if player_name.lower() == 'back':
                             i -= 1
                             j -= 1
@@ -104,7 +112,10 @@ class Group:
                         if rating:
                             player_rating = int(rating)
                             j += 1
-                            players_in_roster[i] = True if i < len(players_in_roster) else players_in_roster.append(True)
+                            if i < len(players_in_roster):
+                                players_in_roster[i] = True
+                            else:
+                                players_in_roster.append(True)
                             go_back = False
                             player_info = Player(player_name=player_name, player_rating=player_rating)
                             self.players.append(player_info)
@@ -116,8 +127,10 @@ class Group:
                             if player_rating == 'back':
                                 j -= 1
                             else:
-                                players_in_roster[i] = False if i < len(players_in_roster) else players_in_roster.append(
-                                    False)
+                                if i < len(players_in_roster):
+                                    players_in_roster[i] = False
+                                else:
+                                    players_in_roster.append(False)
                                 if go_back:
                                     old_player_info = copy.deepcopy(self.players[i])
                                     self.players[i].player_rating = player_rating
@@ -178,6 +191,15 @@ class Groups:
             index += 1
 
 class ResultSheet:
+    match_ordering_selection = {4: ['B:D', 'A:C', 'B:C', 'A:D', 'C:D', 'A:B'],
+                                5: ['A:D', 'B:C', 'B:E', 'C:D', 'A:E', 'B:D', 'A:C', 'D:E', 'C:E', 'A:B'],
+                                6: ['A:D', 'B:C', 'E:F', 'A:E', 'B:D', 'C:F', 'B:F', 'D:E', 'A:C', 'A:F',
+                                    'B:E', 'C:D', 'C:E', 'D:F', 'A:B'],
+                                7: ['A:F', 'B:E', 'C:D', 'B:G', 'C:F', 'D:E', 'A:E', 'B:D', 'C:G', 'A:C', 'D:F',
+                                    'E:G', 'F:G', 'A:D', 'B:C', 'A:B', 'E:F', 'D:G', 'A:G', 'B:F', 'C:E']}
+    letter_dict = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
+    last_row_selection = {4: 20, 5: 33, 6: 48, 7: 66}
+
     def __init__(self, sheet, group, results_regular_format, results_group_title_format, results_merge_format,
                  results_header_format):
         self.sheet = sheet
@@ -189,17 +211,8 @@ class ResultSheet:
         self.num_players = group.num_players
         self.player_name_col_len = 10
         self.first_row = 4
-        self.last_row_selection = {4: 20, 5: 33, 6: 48, 7: 66}
-        self.match_ordering_selection = {4: ['B:D', 'A:C', 'B:C', 'A:D', 'C:D', 'A:B'],
-                                         5: ['A:D', 'B:C', 'B:E', 'C:D', 'A:E', 'B:D', 'A:C', 'D:E', 'C:E', 'A:B'],
-                                         6: ['A:D', 'B:C', 'E:F', 'A:E', 'B:D', 'C:F', 'B:F', 'D:E', 'A:C', 'A:F',
-                                             'B:E', 'C:D', 'C:E', 'D:F', 'A:B'],
-                                         7: ['A:F', 'B:E', 'C:D', 'B:G', 'C:F', 'D:E', 'A:E', 'B:D', 'C:G', 'A:C',
-                                             'D:F', 'E:G', 'F:G', 'A:D', 'B:C', 'A:B', 'E:F', 'D:G', 'A:G', 'B:F',
-                                             'C:E']}
-        self.letter_dict = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
-        self.last_row = self.last_row_selection[self.num_players]
-        self.match_ordering = self.match_ordering_selection[self.num_players]
+        self.last_row = ResultSheet.last_row_selection[self.num_players]
+        self.match_ordering = ResultSheet.match_ordering_selection[self.num_players]
         self.match_winner = None
         self.match_list = []
 
@@ -281,41 +294,16 @@ class ResultSheet:
         self.sheet.write('D2', 'Rating Before', self.results_header_format)
         self.sheet.write('E2', 'Point Change', self.results_header_format)
 
-    def get_match_inputs(self, backtrack=False):
-        if backtrack:
-            self.match_list.pop()
-            index = len(self.match_list) - 1
-        else:
-            index = 0
-        while 0 <= index < len(self.match_ordering):
-            match = correct_input(self.match_ordering[index][0] + " versus "
-                                  + self.match_ordering[index][2] + ": ", 'match_input')
-            if match == 'back':
-                index -= 1
-                if index > 0:
-                    self.match_list.pop()
-            else:
-                self.match_list[index] = match if index < len(self.match_list) else self.match_list.append(match)
-                index += 1
-        if index < 0:
-            return 'backtrack'
-        return 'continue'
-
-    def construct_sheet(self, league_roster_dict):
+    def construct_sheet(self, league_roster_dict, matches):
         self.sheet_merger()
         self.header_writer()
-
-        print('-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n')
-        print('Please input the game scores for {}.'.format(self.group.group_name))
-        print("\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
-        print("In the case of B losing to D 2-3, input 2:3.\n")
 
         for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
             player_one_letter = self.match_ordering[index][0]
             player_two_letter = self.match_ordering[index][2]
-            player_one = self.group.players[self.letter_dict[player_one_letter]]
-            player_two = self.group.players[self.letter_dict[player_two_letter]]
-            match = self.match_list[index]
+            player_one = self.group.players[ResultSheet.letter_dict[player_one_letter]]
+            player_two = self.group.players[ResultSheet.letter_dict[player_two_letter]]
+            match = matches[index]
 
             if len(match) == 0 or (int(match[0]) == int(match[2]) == 0):
                 point_change = 0
@@ -354,6 +342,8 @@ class ResultSheet:
         self.match_winner = self.get_match_winner()
 
 class SummarySheet:
+    seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
     def __init__(self, worksheet, summary_main_title_format, summary_description_format, summary_group_title_format,
                  summary_header_format, summary_regular_format, summary_bold_format, name):
         self.worksheet = worksheet
@@ -365,7 +355,6 @@ class SummarySheet:
         self.summary_bold_format = summary_bold_format
         self.name = name
         self.player_name_col_len = 15
-        self.seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
     def set_columns(self):
         self.worksheet.set_column(0, 0, 5)
@@ -402,7 +391,7 @@ class SummarySheet:
             if group.players[i] is match_winner:
                 player_name += "**"
 
-            self.worksheet.write(row_num, 1, self.seed_letters[i], self.summary_regular_format)
+            self.worksheet.write(row_num, 1, SummarySheet.seed_letters[i], self.summary_regular_format)
             self.worksheet.write(row_num, 2, player_name, self.summary_bold_format)
             self.worksheet.write(row_num, 3, group.players[i].player_rating, self.summary_regular_format)
             self.worksheet.write(row_num, 4, group.players[i].matches_won, self.summary_regular_format)
@@ -575,7 +564,7 @@ def set_up_workbook():
         'valign': 'vcenter'
     })
 
-    all_info = {'summary_info': (workbook, summary_main_title_format, summary_description_format,
+    all_info = {'summary_info': (summary_main_title_format, summary_description_format,
                                  summary_group_title_format, summary_header_format, summary_regular_format,
                                  summary_bold_format, name),
                 'results_info': (results_regular_format, results_group_title_format, results_merge_format,
@@ -583,12 +572,38 @@ def set_up_workbook():
 
     return all_info, workbook, file_name
 
-def set_up_summary_sheet(workbook, summary_main_title_format, summary_description_format, summary_group_title_format,
-                         summary_header_format, summary_regular_format, summary_bold_format, name):
+def get_match_inputs(group, backtrack=False):
+    print('-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n')
+    print('Please input the game scores for {}.'.format(group.group_name))
+    print("\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
+    print("In the case of B losing to D 2-3, input 2:3.\n")
+
+    match_list = []
+    match_ordering = ResultSheet.match_ordering_selection[group.num_players]
+    if backtrack:
+        match_list.pop()
+        index = len(match_list) - 1
+    else:
+        index = 0
+    while 0 <= index < len(match_ordering):
+        match = correct_input(match_ordering[index][0] + " versus " + match_ordering[index][2] + ": ", 'match_input')
+        if match == 'back':
+            index -= 1
+            if index > 0:
+                match_list.pop()
+        else:
+            if index < len(match_list):
+                match_list[index] = match
+            else:
+                match_list.append(match)
+            index += 1
+    if index < 0:
+        return 'backtrack'
+    return match_list
+
+def set_up_summary_sheet(args):
     worksheet = workbook.add_worksheet('Summary')
-    summary_sheet = SummarySheet(worksheet, summary_main_title_format, summary_description_format,
-                                 summary_group_title_format, summary_header_format, summary_regular_format,
-                                 summary_bold_format, name)
+    summary_sheet = SummarySheet(worksheet, *args)
     summary_sheet.set_columns()
     return summary_sheet
 
@@ -614,7 +629,7 @@ def generate_workbook():
 
     global file_name, workbook
     all_info, workbook, file_name = set_up_workbook()
-    summary_sheet = set_up_summary_sheet(*all_info['summary_info'])
+    summary_sheet = set_up_summary_sheet(all_info['summary_info'])
     title_row_num = 4
 
     groups = Groups()
@@ -628,27 +643,44 @@ def generate_workbook():
     ratings_sheet_start_row_index = len(league_roster_dict) + 1
 
     group_index = 0
+    backtrack = False
+    group_matches = []
     while 0 <= group_index < len(group_list):
         group = group_list[group_index]
-        if group.get_info(league_roster_dict) == 'backtrack':
+        if group.get_info(league_roster_dict, backtrack=backtrack) == 'backtrack':
             group_index -= 1
+            backtrack = False
             if group_index < 0:
                 groups.construct_groups(backtrack=True)
                 group_list = groups.group_list
                 group_index = 0
+            else:
+                group_matches.pop()
         else:
-            sheet = workbook.add_worksheet(group.group_name)
-            result_sheet = ResultSheet(sheet, group, *all_info['results_info'])
-            result_sheet.construct_sheet(league_roster_dict)
-            header_row_num = title_row_num + 1
-            first_data_row_num = header_row_num + 1
-            last_row_num = header_row_num + group.num_players
-            summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num, group_num=group.group_num)
-            summary_sheet.write_to_table(group_size=group.num_players, group=group,
-                                         first_data_row_num=first_data_row_num,
-                                         match_winner=result_sheet.match_winner)
-            title_row_num = last_row_num + 2
-            group_index += 1
+            match_inputs = get_match_inputs(group)
+            if match_inputs == 'backtrack':
+                backtrack = True
+            else:
+                if group_index < len(group_matches):
+                    group_matches[group_index] = (group, match_inputs)
+                else:
+                    group_matches.append((group, match_inputs))
+                backtrack = False
+                group_index += 1
+
+    for group, matches in group_matches:
+        sheet = workbook.add_worksheet(group.group_name)
+        result_sheet = ResultSheet(sheet, group, *all_info['results_info'])
+        result_sheet.construct_sheet(league_roster_dict, matches)
+        header_row_num = title_row_num + 1
+        first_data_row_num = header_row_num + 1
+        last_row_num = header_row_num + group.num_players
+        summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num, group_num=group.group_num)
+        summary_sheet.write_to_table(group_size=group.num_players, group=group,
+                                     first_data_row_num=first_data_row_num,
+                                     match_winner=result_sheet.match_winner)
+        title_row_num = last_row_num + 2
+        group_index += 1
 
     print('_______________________________________________________________________________')
     print('\nOpening league sheet...')
