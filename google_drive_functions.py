@@ -62,8 +62,8 @@ def determine_semester_folder_id(service, file_name, is_tryouts, year_folder_id)
             if is_tryouts:
                 if semester_folders:
                     for folder in semester_folders:
-                        if [string for string in shared_functions.file_name_split(folder['name'].lower())
-                            if 'try' in string]:
+                        if [string for string in shared_functions.file_name_split(
+                                folder['name'].lower()) if 'try' in string]:
                             return folder['id']
                 return generate_semester_folder_id(service=service, year=year, is_tryouts=is_tryouts,
                                                    semester=semester_month_dict[month_ranges].capitalize(),

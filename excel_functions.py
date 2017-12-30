@@ -6,6 +6,7 @@ import shared_functions
 import google_sheets_functions
 import operator
 import datetime
+import copy
 import sys
 import os
 
@@ -22,40 +23,137 @@ class Player:
         return str(self.player_name) + " (" + str(self.player_rating) + ")"
 
 class Group:
+    letter_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
     def __init__(self, group_num, num_players):
         self.group_num = group_num
         self.group_name = "Group {}".format(self.group_num)
         self.num_players = num_players
         self.players = []
+        self.sorted_players = []
         self.group_winner = None
 
-    def get_info(self, league_roster_dict):
-        print('_______________________________________________________________________________\n')
-        print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
-        if not league_roster_dict:
-            for i in range(1, self.num_players + 1):
-                player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
-                player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name), 'rating_input')
-                player_info = Player(player_name=player_name, player_rating=player_rating)
-                self.players.append(player_info)
-                print(str(player_info) + " has been added to {}.\n".format(self.group_name))
+    def get_info(self, league_roster_dict, backtrack=False):
+        if backtrack:
+            i = len(self.players) - 1
         else:
-            for i in range(1, self.num_players + 1):
-                player_name = correct_input("Name of person {} in {}: ".format(i, self.group_name), str).title()
-                rating = league_roster_dict.get(player_name)
-                if rating:
-                    player_rating = int(rating)
+            print('_______________________________________________________________________________\n')
+            print("Please input the names and ratings for each person in {}.\n".format(self.group_name))
+            i = 0
+        if not league_roster_dict:
+            go_back = False
+            while 0 <= i < self.num_players:
+                if go_back or backtrack:
+                    j = 1
                 else:
-                    player_rating = correct_input("Rating of person {} in {}: ".format(i, self.group_name),
-                                                  'rating_input')
-                    league_roster_dict[player_name] = player_rating
-                player_info = Player(player_name=player_name, player_rating=player_rating)
-                self.players.append(player_info)
-                print(str(player_info) + " has been added to {}.\n".format(self.group_name))
+                    j = 0
+                while 0 <= j < 2:
+                    if j == 0:
+                        player_name = correct_input("Name of person {} in {}: "
+                                                    .format(i + 1, self.group_name), str).title()
+                        if player_name.lower() == 'back':
+                            i -= 1
+                            j -= 1
+                            if i >= 0:
+                                go_back = True
+                                if i < len(self.players) - 1:
+                                    print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
+                            else:
+                                print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
+                        else:
+                            j += 1
+                    elif j == 1:
+                        player_rating = correct_input("Rating of person {} in {}: "
+                                                      .format(i + 1, self.group_name), 'rating_input')
+                        if player_rating == 'back':
+                            j -= 1
+                        else:
+                            if go_back or backtrack:
+                                old_player_info = copy.deepcopy(self.players[i])
+                                self.players[i].player_rating = player_rating
+                                print("{} has been amended to {}.\n".format(old_player_info, self.players[i]))
+                            else:
+                                player_info = Player(player_name=player_name, player_rating=player_rating)
+                                self.players.append(player_info)
+                                print("{} has been added to {}.\n".format(player_info, self.group_name))
+                            go_back = False
+                            i += 1
+                            j += 1
+            if i < 0:
+                return 'backtrack'
+        else:
+            players_in_roster = []
+            in_roster = False
+            go_back = False
+            while 0 <= i < self.num_players:
+                if go_back and not in_roster:
+                    j = 1
+                else:
+                    j = 0
+                while 0 <= j < 2:
+                    if j == 0:
+                        player_name = correct_input("Name of person {} in {}: "
+                                                    .format(i + 1, self.group_name), str).title()
+                        if player_name.lower() == 'back':
+                            i -= 1
+                            j -= 1
+                            if i >= 0:
+                                go_back = True
+                                if players_in_roster[i]:
+                                    in_roster = True
+                                else:
+                                    in_roster = False
+                                if i < len(self.players) - 1:
+                                    print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
+                            else:
+                                print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
+                        else:
+                            j += 1
+                    elif j == 1:
+                        rating = league_roster_dict.get(player_name)
+                        if rating:
+                            player_rating = int(rating)
+                            j += 1
+                            if i < len(players_in_roster):
+                                players_in_roster[i] = True
+                            else:
+                                players_in_roster.append(True)
+                            go_back = False
+                            player_info = Player(player_name=player_name, player_rating=player_rating)
+                            self.players.append(player_info)
+                            print("{} has been added to {}.\n".format(player_info, self.group_name))
+                            i += 1
+                        else:
+                            player_rating = correct_input("Rating of person {} in {}: ".format(i + 1, self.group_name),
+                                                          'rating_input')
+                            if player_rating == 'back':
+                                j -= 1
+                            else:
+                                if i < len(players_in_roster):
+                                    players_in_roster[i] = False
+                                else:
+                                    players_in_roster.append(False)
+                                if go_back:
+                                    old_player_info = copy.deepcopy(self.players[i])
+                                    self.players[i].player_rating = player_rating
+                                    print("{} has been amended to {}.\n".format(old_player_info, self.players[i]))
+                                else:
+                                    player_info = Player(player_name=player_name, player_rating=player_rating)
+                                    self.players.append(player_info)
+                                    print("{} has been added to {}.\n".format(player_info, self.group_name))
+                                go_back = False
+                                i += 1
+                                j += 1
+            if i < 0:
+                return 'backtrack'
         self.sort_ratings()
+        for index, player in enumerate(self.sorted_players):
+            print('{}: {}'.format(Group.letter_list[index], player))
+        print('')
+        return 'continue'
 
     def sort_ratings(self):
-        self.players = sorted(self.players, key=lambda player: player.player_rating, reverse=True)
+        self.sorted_players = sorted(self.players, key=lambda player: player.player_rating, reverse=True)
 
 class Groups:
     def __init__(self, num_groups=0, group_list=[]):
@@ -65,22 +163,51 @@ class Groups:
     def add_group(self, group):
         self.group_list.append(group)
 
-    def construct_groups(self):
-        self.num_groups = correct_input('Number of groups: ', int)
+    def remove_group(self):
+        if len(self.group_list) > 0:
+            self.group_list.pop()
 
-        for x in range(self.num_groups):
-            group_num = x + 1
+    def construct_groups(self, backtrack=False):
+        if backtrack:
+            index = len(self.group_list) - 1
+            self.remove_group()
+        else:
+            num_groups = correct_input('Number of groups: ', int)
+            while num_groups == 'back':
+                num_groups = correct_input('Try again. Number of groups: ', int)
+            self.num_groups = num_groups
+            index = 0
+
+        while 0 <= index < self.num_groups:
+            group_num = index + 1
             while True:
                 num_players = correct_input('How many people were in Group ' + str(group_num) + '? ', int)
-                if num_players < 4:
+                if num_players == 'back':
+                    if index == 0:
+                        return self.construct_groups()
+                    else:
+                        self.remove_group()
+                        index -= 1
+                        group_num = index + 1
+                elif num_players < 4:
                     print('There has to be at least four people in a group. Try again.')
                 elif num_players > 7:
                     print('There cannot be more than seven people in a group. Try again.')
                 else:
                     break
             self.add_group(Group(group_num=group_num, num_players=num_players))
+            index += 1
 
 class ResultSheet:
+    match_ordering_selection = {4: ['B:D', 'A:C', 'B:C', 'A:D', 'C:D', 'A:B'],
+                                5: ['A:D', 'B:C', 'B:E', 'C:D', 'A:E', 'B:D', 'A:C', 'D:E', 'C:E', 'A:B'],
+                                6: ['A:D', 'B:C', 'E:F', 'A:E', 'B:D', 'C:F', 'B:F', 'D:E', 'A:C', 'A:F',
+                                    'B:E', 'C:D', 'C:E', 'D:F', 'A:B'],
+                                7: ['A:F', 'B:E', 'C:D', 'B:G', 'C:F', 'D:E', 'A:E', 'B:D', 'C:G', 'A:C', 'D:F',
+                                    'E:G', 'F:G', 'A:D', 'B:C', 'A:B', 'E:F', 'D:G', 'A:G', 'B:F', 'C:E']}
+    letter_dict = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
+    last_row_selection = {4: 20, 5: 33, 6: 48, 7: 66}
+
     def __init__(self, sheet, group, results_regular_format, results_group_title_format, results_merge_format,
                  results_header_format):
         self.sheet = sheet
@@ -92,23 +219,15 @@ class ResultSheet:
         self.num_players = group.num_players
         self.player_name_col_len = 10
         self.first_row = 4
-        self.last_row_selection = {4: 20, 5: 33, 6: 48, 7: 66}
-        self.match_ordering_selection = {4: ['B:D', 'A:C', 'B:C', 'A:D', 'C:D', 'A:B'],
-                                         5: ['A:D', 'B:C', 'B:E', 'C:D', 'A:E', 'B:D', 'A:C', 'D:E', 'C:E', 'A:B'],
-                                         6: ['A:D', 'B:C', 'E:F', 'A:E', 'B:D', 'C:F', 'B:F', 'D:E', 'A:C', 'A:F',
-                                             'B:E', 'C:D', 'C:E', 'D:F', 'A:B'],
-                                         7: ['A:F', 'B:E', 'C:D', 'B:G', 'C:F', 'D:E', 'A:E', 'B:D', 'C:G', 'A:C',
-                                             'D:F', 'E:G', 'F:G', 'A:D', 'B:C', 'A:B', 'E:F', 'D:G', 'A:G', 'B:F',
-                                             'C:E']}
-        self.letter_dict = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
-        self.last_row = self.last_row_selection[self.num_players]
-        self.match_ordering = self.match_ordering_selection[self.num_players]
+        self.last_row = ResultSheet.last_row_selection[self.num_players]
+        self.match_ordering = ResultSheet.match_ordering_selection[self.num_players]
         self.match_winner = None
+        self.match_list = []
 
     def get_match_winner(self):
-        most_matches_won = max(self.group.players, key=lambda player: player.matches_won).matches_won
+        most_matches_won = max(self.group.sorted_players, key=lambda player: player.matches_won).matches_won
         players_most_matches = list(filter(lambda player: player.matches_won == most_matches_won,
-                                               self.group.players))
+                                           self.group.sorted_players))
         most_games_won = max(players_most_matches, key=lambda player: player.games_won).games_won
         players_most_matches_games = list(filter(lambda player: player.games_won == most_games_won,
                                                players_most_matches))
@@ -159,7 +278,6 @@ class ResultSheet:
     def sheet_merger(self):
         self.sheet.merge_range('A1:E1', '{} - Match Record'.format(self.group.group_name),
                                self.results_group_title_format)
-
         merge_row_num = 3
         for _ in range(len(self.match_ordering)):
             self.sheet.merge_range('A' + str(merge_row_num) + ':E' + str(merge_row_num), ' ', self.results_merge_format)
@@ -172,7 +290,7 @@ class ResultSheet:
         self.sheet.set_column(3, 3, len_longest_substring('Rating Before') + 1)
         self.sheet.set_column(4, 4, len_longest_substring('Point Change') + 1)
 
-        for player in self.group.players:
+        for player in self.group.sorted_players:
             len_player_name = len(player.player_name)
             if len_player_name > self.player_name_col_len:
                 self.player_name_col_len = len_player_name + 2
@@ -184,22 +302,16 @@ class ResultSheet:
         self.sheet.write('D2', 'Rating Before', self.results_header_format)
         self.sheet.write('E2', 'Point Change', self.results_header_format)
 
-    def construct_sheet(self, league_roster_dict):
+    def construct_sheet(self, league_roster_dict, matches):
         self.sheet_merger()
         self.header_writer()
-
-        print('-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n')
-        print('Please input the game scores for {}.'.format(self.group.group_name))
-        print("\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
-        print("In the case of B losing to D 2-3, input 2:3.\n")
 
         for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
             player_one_letter = self.match_ordering[index][0]
             player_two_letter = self.match_ordering[index][2]
-            player_one = self.group.players[self.letter_dict[player_one_letter]]
-            player_two = self.group.players[self.letter_dict[player_two_letter]]
-            match = correct_input(self.match_ordering[index][0] + " versus "
-                          + self.match_ordering[index][2] + ": ", 'match_input')
+            player_one = self.group.sorted_players[ResultSheet.letter_dict[player_one_letter]]
+            player_two = self.group.sorted_players[ResultSheet.letter_dict[player_two_letter]]
+            match = matches[index]
 
             if len(match) == 0 or (int(match[0]) == int(match[2]) == 0):
                 point_change = 0
@@ -232,12 +344,14 @@ class ResultSheet:
             player_two.final_rating -= point_change
             player_two.rating_change -= point_change
 
-        for player in self.group.players:
+        for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
 
         self.match_winner = self.get_match_winner()
 
 class SummarySheet:
+    seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+
     def __init__(self, worksheet, summary_main_title_format, summary_description_format, summary_group_title_format,
                  summary_header_format, summary_regular_format, summary_bold_format, name):
         self.worksheet = worksheet
@@ -249,7 +363,6 @@ class SummarySheet:
         self.summary_bold_format = summary_bold_format
         self.name = name
         self.player_name_col_len = 15
-        self.seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 
     def set_columns(self):
         self.worksheet.set_column(0, 0, 5)
@@ -282,18 +395,18 @@ class SummarySheet:
 
         for i in range(0, group_size):
             row_num = i + first_data_row_num
-            player_name = group.players[i].player_name
-            if group.players[i] is match_winner:
+            player_name = group.sorted_players[i].player_name
+            if group.sorted_players[i] is match_winner:
                 player_name += "**"
 
-            self.worksheet.write(row_num, 1, self.seed_letters[i], self.summary_regular_format)
+            self.worksheet.write(row_num, 1, SummarySheet.seed_letters[i], self.summary_regular_format)
             self.worksheet.write(row_num, 2, player_name, self.summary_bold_format)
-            self.worksheet.write(row_num, 3, group.players[i].player_rating, self.summary_regular_format)
-            self.worksheet.write(row_num, 4, group.players[i].matches_won, self.summary_regular_format)
-            self.worksheet.write(row_num, 5, group.players[i].rating_change, self.summary_regular_format)
-            self.worksheet.write(row_num, 6, group.players[i].final_rating, self.summary_bold_format)
+            self.worksheet.write(row_num, 3, group.sorted_players[i].player_rating, self.summary_regular_format)
+            self.worksheet.write(row_num, 4, group.sorted_players[i].matches_won, self.summary_regular_format)
+            self.worksheet.write(row_num, 5, group.sorted_players[i].rating_change, self.summary_regular_format)
+            self.worksheet.write(row_num, 6, group.sorted_players[i].final_rating, self.summary_bold_format)
 
-            len_longest_name = len_longest_substring(group.players[i].player_name)
+            len_longest_name = len_longest_substring(group.sorted_players[i].player_name)
             if len_longest_name > self.player_name_col_len:
                 self.player_name_col_len = len_longest_name + 1
                 self.worksheet.set_column(2, 2, self.player_name_col_len)
@@ -302,7 +415,8 @@ def correct_input(input_text, var_type):
     type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
                  'date_input': 'date input.', 'rating_input': 'rating input.'}
     pre_input = input(input_text)
-    if pre_input.lower() in ['quit', 'q']:
+
+    if pre_input.lower().strip() in ['quit', 'q']:
         try:
             workbook.close()
             os.remove(file_name)
@@ -310,6 +424,8 @@ def correct_input(input_text, var_type):
             pass
         finally:
             sys.exit()
+    elif pre_input.lower().strip() in ['back', 'b'] and var_type != 'date_input':
+        return 'back'
 
     if var_type == 'date_input':
         date_input = pre_input.strip().replace('\'', '')
@@ -344,10 +460,10 @@ def correct_input(input_text, var_type):
                 if len(rating_input) < 5 and rating_input.isdigit():
                     return abs(int(rating_input))
                 else:
-                    print("Please input the correct format for the {}".format(type_dict[var_type]))
+                    print("\nPlease input the correct format for the {}".format(type_dict[var_type]))
                     rating_input = input(input_text)
             except:
-                print("Please input the correct format for the {}".format(type_dict[var_type]))
+                print("\nPlease input the correct format for the {}".format(type_dict[var_type]))
                 rating_input = input(input_text)
     else:
         value = pre_input.strip()
@@ -456,7 +572,7 @@ def set_up_workbook():
         'valign': 'vcenter'
     })
 
-    all_info = {'summary_info': (workbook, summary_main_title_format, summary_description_format,
+    all_info = {'summary_info': (summary_main_title_format, summary_description_format,
                                  summary_group_title_format, summary_header_format, summary_regular_format,
                                  summary_bold_format, name),
                 'results_info': (results_regular_format, results_group_title_format, results_merge_format,
@@ -464,12 +580,38 @@ def set_up_workbook():
 
     return all_info, workbook, file_name
 
-def set_up_summary_sheet(workbook, summary_main_title_format, summary_description_format, summary_group_title_format,
-                         summary_header_format, summary_regular_format, summary_bold_format, name):
+def get_match_inputs(group, backtrack=False):
+    print('-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n')
+    print('Please input the game scores for {}.'.format(group.group_name))
+    print("\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
+    print("In the case of B losing to D 2-3, input 2:3.\n")
+
+    match_list = []
+    match_ordering = ResultSheet.match_ordering_selection[group.num_players]
+    if backtrack:
+        match_list.pop()
+        index = len(match_list) - 1
+    else:
+        index = 0
+    while 0 <= index < len(match_ordering):
+        match = correct_input(match_ordering[index][0] + " versus " + match_ordering[index][2] + ": ", 'match_input')
+        if match == 'back':
+            index -= 1
+            if index > 0:
+                match_list.pop()
+        else:
+            if index < len(match_list):
+                match_list[index] = match
+            else:
+                match_list.append(match)
+            index += 1
+    if index < 0:
+        return 'backtrack'
+    return match_list
+
+def set_up_summary_sheet(args):
     worksheet = workbook.add_worksheet('Summary')
-    summary_sheet = SummarySheet(worksheet, summary_main_title_format, summary_description_format,
-                                 summary_group_title_format, summary_header_format, summary_regular_format,
-                                 summary_bold_format, name)
+    summary_sheet = SummarySheet(worksheet, *args)
     summary_sheet.set_columns()
     return summary_sheet
 
@@ -490,11 +632,12 @@ def generate_workbook():
     print("Basic rules for league at GTTTA:\n")
     print("There can be no more than seven players in any group.")
     print("There can be no less than four people per group.")
-    print("Type 'quit' or 'q' to exit the program.\n")
+    print("Type 'back' or 'b' to go back at any time.")
+    print("Type 'quit' or 'q' to exit the program at any time.\n")
 
     global file_name, workbook
     all_info, workbook, file_name = set_up_workbook()
-    summary_sheet = set_up_summary_sheet(*all_info['summary_info'])
+    summary_sheet = set_up_summary_sheet(all_info['summary_info'])
     title_row_num = 4
 
     groups = Groups()
@@ -502,24 +645,51 @@ def generate_workbook():
     group_list = groups.group_list
 
     print('\nLoading roster, please wait...')
-    service= google_sheets_functions.create_service()
+    service = google_sheets_functions.create_service()
     ratings_sheet_name = get_ratings_sheet_name(file_name)
     league_roster_list, league_roster_dict = google_sheets_functions.get_league_roster(service, ratings_sheet_name)
     ratings_sheet_start_row_index = len(league_roster_dict) + 1
 
-    for group in group_list:
-        group.get_info(league_roster_dict)
+    group_index = 0
+    backtrack = False
+    group_matches = []
+    while 0 <= group_index < len(group_list):
+        group = group_list[group_index]
+        if group.get_info(league_roster_dict, backtrack=backtrack) == 'backtrack':
+            group_index -= 1
+            backtrack = False
+            if group_index < 0:
+                groups.construct_groups(backtrack=True)
+                group_list = groups.group_list
+                group_index = 0
+            else:
+                group_matches.pop()
+        else:
+            match_inputs = get_match_inputs(group)
+            if match_inputs == 'backtrack':
+                backtrack = True
+            else:
+                if group_index < len(group_matches):
+                    group_matches[group_index] = (group, match_inputs)
+                else:
+                    group_matches.append((group, match_inputs))
+                backtrack = False
+                group_index += 1
+
+    for group, matches in group_matches:
         sheet = workbook.add_worksheet(group.group_name)
         result_sheet = ResultSheet(sheet, group, *all_info['results_info'])
-        result_sheet.construct_sheet(league_roster_dict)
+        result_sheet.construct_sheet(league_roster_dict, matches)
         header_row_num = title_row_num + 1
         first_data_row_num = header_row_num + 1
         last_row_num = header_row_num + group.num_players
-        summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num, group_num=group.group_num)
+        summary_sheet.make_table(title_row_num=title_row_num, header_row_num=header_row_num,
+                                 group_num=group.group_num)
         summary_sheet.write_to_table(group_size=group.num_players, group=group,
                                      first_data_row_num=first_data_row_num,
                                      match_winner=result_sheet.match_winner)
         title_row_num = last_row_num + 2
+        group_index += 1
 
     print('_______________________________________________________________________________')
     print('\nOpening league sheet...')

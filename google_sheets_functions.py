@@ -370,4 +370,3 @@ def write_to_ratings_sheet(service, row_data, start_row_index, end_row_index, sh
         spreadsheetId=RATINGS_SPREADSHEET_ID,
         body=update_border_body
     ).execute()
-
