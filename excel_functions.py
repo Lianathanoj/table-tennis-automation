@@ -411,12 +411,8 @@ class SummarySheet:
                 self.player_name_col_len = len_longest_name + 1
                 self.worksheet.set_column(2, 2, self.player_name_col_len)
 
-def correct_input(input_text, var_type):
-    type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
-                 'date_input': 'date input.', 'rating_input': 'rating input.'}
-    pre_input = input(input_text)
-
-    if pre_input.lower().strip() in ['quit', 'q']:
+def check_quit(input_text):
+    if input_text.lower().strip() in ['quit', 'q']:
         try:
             workbook.close()
             os.remove(file_name)
@@ -424,7 +420,14 @@ def correct_input(input_text, var_type):
             pass
         finally:
             sys.exit()
-    elif pre_input.lower().strip() in ['back', 'b'] and var_type != 'date_input':
+
+def correct_input(input_text, var_type):
+    type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
+                 'date_input': 'date input.', 'rating_input': 'rating input.'}
+    pre_input = input(input_text)
+
+    check_quit(pre_input)
+    if pre_input.lower().strip() in ['back', 'b'] and var_type != 'date_input':
         return 'back'
 
     if var_type == 'date_input':
@@ -439,6 +442,7 @@ def correct_input(input_text, var_type):
             except:
                 print("Please input the correct format for the {}".format(type_dict[var_type]))
                 date_input = input('Date: ')
+                check_quit(date_input)
     elif var_type == 'match_input':
         match_input = pre_input.strip().replace('.', '')
         while True:
@@ -448,11 +452,11 @@ def correct_input(input_text, var_type):
                 elif len(match_input) == 3 and match_input[0].isdigit() and match_input[2].isdigit():
                     return match_input
                 else:
-                    print("Please input the correct format for the {}".format(type_dict[var_type]))
-                    match_input = input(input_text)
+                    raise Exception
             except:
                 print("Please input the correct format for the {}".format(type_dict[var_type]))
                 match_input = input(input_text)
+                check_quit(match_input)
     elif var_type == 'rating_input':
         rating_input = pre_input.replace('-', '').strip()
         while True:
@@ -460,11 +464,11 @@ def correct_input(input_text, var_type):
                 if len(rating_input) < 5 and rating_input.isdigit():
                     return abs(int(rating_input))
                 else:
-                    print("\nPlease input the correct format for the {}".format(type_dict[var_type]))
-                    rating_input = input(input_text)
+                    raise Exception
             except:
                 print("\nPlease input the correct format for the {}".format(type_dict[var_type]))
                 rating_input = input(input_text)
+                check_quit(rating_input)
     else:
         value = pre_input.strip()
         while True:
@@ -475,6 +479,7 @@ def correct_input(input_text, var_type):
             except ValueError:
                 print("Please input the correct value of type {}.".format(type_dict[var_type]))
                 value = input(input_text).strip()
+                check_quit(value)
 
 def len_longest_substring(string):
     return len(max(string.split(' '), key=len))
