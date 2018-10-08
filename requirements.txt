@@ -1,3 +1,4 @@
 httplib2==0.10.3
 XlsxWriter==1.0.2
 google_api_python_client==1.6.4
+tabulate==0.8.2

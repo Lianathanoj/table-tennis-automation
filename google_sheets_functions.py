@@ -1,6 +1,7 @@
 from __future__ import print_function
 from apiclient import discovery, errors
 from pprint import pprint
+from tabulate import tabulate
 import shared_functions
 import httplib2
 
@@ -11,6 +12,10 @@ CLIENT_SECRET_FILE = 'sheets_client_secret.json'
 APPLICATION_NAME = 'TT Automation - Sheets API'
 CACHE_FILE_NAME = 'sheets-api.json'
 
+# This is the live ID. Uncomment line 16 and comment line 19 to use the live id.
+# RATINGS_SPREADSHEET_ID = '1TzyleWIfON1ADruZxtbq8Xq0fl-HEHNgJakBVZ6WxqY'
+
+# This is the testing ID. Uncomment line 19 and comment line 16 to use the testing id.
 RATINGS_SPREADSHEET_ID = '1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0'
 
 def create_service():
@@ -42,7 +47,12 @@ def get_ratings_sheet_info(service, sheet_name):
         if not values:
             print('No roster found for this semester.')
         else:
-            print('Roster detected.')
+            formatted_roster = []
+            for i, row_num in enumerate(values[0]):
+                formatted_roster.append([row_num, values[1][i], values[2][i]])
+
+            print('Roster detected.\n')
+            print(tabulate(formatted_roster, headers=['', 'Name', 'Rating']))
             return values
     else:
         print('No roster found for this semester.')

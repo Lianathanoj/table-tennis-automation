@@ -56,10 +56,8 @@ class Group:
                             j -= 1
                             if i >= 0:
                                 go_back = True
-                                if i < len(self.players) - 1:
+                                if i <= len(self.players) - 1:
                                     print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
-                            else:
-                                print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
                         else:
                             j += 1
                     elif j == 1:
@@ -103,10 +101,8 @@ class Group:
                                     in_roster = True
                                 else:
                                     in_roster = False
-                                if i < len(self.players) - 1:
+                                if i <= len(self.players) - 1:
                                     print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
-                            else:
-                                print("{} has been removed from {}.\n".format(self.players.pop(), self.group_name))
                         else:
                             j += 1
                     elif j == 1:

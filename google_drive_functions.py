@@ -15,6 +15,10 @@ CLIENT_SECRET_FILE = 'drive_client_secret.json'
 APPLICATION_NAME = 'TT Automation - Drive API'
 CACHE_FILE_NAME = 'drive-api.json'
 
+# This is the live ID. Uncomment line 19 and comment line 22 to use the live id.
+# RESULTS_FOLDER_ID = '0B9Mt_sNXCmNzbTVici1WYk1tcmc'
+
+# This is the testing ID. Uncomment line 22 and comment line 19 to use the testing id.
 RESULTS_FOLDER_ID = '1EfvFgtENNJ4LdY4FqGtJrYUbPfppm3C9'
 
 def get_credentials():
