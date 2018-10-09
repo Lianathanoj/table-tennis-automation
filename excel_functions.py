@@ -258,7 +258,7 @@ class ResultSheet:
             point_change = -20
             if difference < 13:
                 return -8
-            elif 13 <= difference < 37:
+            elif 13 <= difference < 38:
                 return -10
             elif 38 <= difference < 63:
                 return -13
@@ -370,6 +370,15 @@ class SummarySheet:
         self.worksheet.set_column(6, 6, len_longest_substring('Rating After') + 1)
         self.worksheet.set_column(7, 7, 5)
 
+    def create_title_info(self):
+        description = 'Group winners (denoted by **) are promoted to the next higher table during the next week' \
+                      ' if they are present.'
+        self.worksheet.merge_range(first_row=0, first_col=0, last_row=0, last_col=7,
+                                   data='League Summary - {}'.format(self.name),
+                                   cell_format=self.summary_main_title_format)
+        self.worksheet.merge_range(first_row=2, first_col=1, last_row=2, last_col=6, data=description,
+                                   cell_format=self.summary_description_format)
+
     def make_table(self, title_row_num, header_row_num, group_num):
         self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=6,
                                    data='Group ' + str(group_num), cell_format=self.summary_group_title_format)
@@ -381,14 +390,6 @@ class SummarySheet:
         self.worksheet.write(header_row_num, 6, 'Rating After', self.summary_header_format)
 
     def write_to_table(self, group_size, group, first_data_row_num, match_winner):
-        description = 'Group winners (denoted by **) are promoted to the next higher table during the next week' \
-                      ' if they are present.'
-        self.worksheet.merge_range(first_row=0, first_col=0, last_row=0, last_col=7,
-                                   data='League Summary - {}'.format(self.name),
-                                   cell_format=self.summary_main_title_format)
-        self.worksheet.merge_range(first_row=2, first_col=1, last_row=2, last_col=6, data=description,
-                                   cell_format=self.summary_description_format)
-
         for i in range(0, group_size):
             row_num = i + first_data_row_num
             player_name = group.sorted_players[i].player_name
@@ -676,6 +677,8 @@ def generate_workbook():
                     group_matches.append((group, match_inputs))
                 backtrack = False
                 group_index += 1
+
+    summary_sheet.create_title_info()
 
     for group, matches in group_matches:
         sheet = workbook.add_worksheet(group.group_name)
