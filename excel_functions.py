@@ -233,6 +233,8 @@ class ResultSheet:
     def higher_rating_is_winner(self, match):
         games_won = match[0]
         games_lost = match[2]
+        if games_won == games_lost:
+            return 'tied'
         return int(games_won) > int(games_lost)
 
     def rating_calc(self, higher_rating, lower_rating, higher_rating_is_winner):
@@ -241,7 +243,9 @@ class ResultSheet:
         min_rating_threshold = 13
         max_rating_threshold = min_rating_threshold + rating_increment * 9 + 1
 
-        if higher_rating_is_winner:
+        if higher_rating_is_winner == 'tied':
+            return 0
+        elif higher_rating_is_winner:
             point_change = 8
             if 138 <= difference < 188:
                 return 2
@@ -280,16 +284,16 @@ class ResultSheet:
             merge_row_num += 3
 
     def header_writer(self):
-        self.sheet.set_column(0, 0, len_longest_substring('Match') + 1)
-        self.sheet.set_column(1, 1, self.player_name_col_len + 1)
-        self.sheet.set_column(2, 2, len_longest_substring('Score') + 1)
-        self.sheet.set_column(3, 3, len_longest_substring('Rating Before') + 1)
-        self.sheet.set_column(4, 4, len_longest_substring('Point Change') + 1)
+        self.sheet.set_column(0, 0, len_longest_substring('Match') + 3)
+        self.sheet.set_column(1, 1, self.player_name_col_len + 3)
+        self.sheet.set_column(2, 2, len_longest_substring('Score') + 3)
+        self.sheet.set_column(3, 3, len_longest_substring('Rating Before') + 3)
+        self.sheet.set_column(4, 4, len_longest_substring('Point Change') + 3)
 
         for player in self.group.sorted_players:
             len_player_name = len(player.player_name)
-            if len_player_name > self.player_name_col_len:
-                self.player_name_col_len = len_player_name + 2
+            if len_player_name + 6 > self.player_name_col_len:
+                self.player_name_col_len = len_player_name + 6
                 self.sheet.set_column(1, 1, self.player_name_col_len)
 
         self.sheet.write('A2', 'Match', self.results_header_format)
@@ -362,32 +366,34 @@ class SummarySheet:
 
     def set_columns(self):
         self.worksheet.set_column(0, 0, 5)
-        self.worksheet.set_column(1, 1, len_longest_substring('Seed') + 1)
+        self.worksheet.set_column(1, 1, len_longest_substring('Seed') + 3)
         self.worksheet.set_column(2, 2, self.player_name_col_len)
-        self.worksheet.set_column(3, 3, len_longest_substring('Rating Before') + 1)
-        self.worksheet.set_column(4, 4, len_longest_substring('Matches Won') + 1)
-        self.worksheet.set_column(5, 5, len_longest_substring('Rating Change') + 1)
-        self.worksheet.set_column(6, 6, len_longest_substring('Rating After') + 1)
-        self.worksheet.set_column(7, 7, 5)
+        self.worksheet.set_column(3, 3, len_longest_substring('Rating Before') + 3)
+        self.worksheet.set_column(4, 4, len_longest_substring('Matches Won') + 3)
+        self.worksheet.set_column(5, 5, len_longest_substring('Games Won') + 3)
+        self.worksheet.set_column(6, 6, len_longest_substring('Rating Change') + 3)
+        self.worksheet.set_column(7, 7, len_longest_substring('Rating After') + 3)
+        self.worksheet.set_column(8, 8, 5)
 
     def create_title_info(self):
         description = 'Group winners (denoted by **) are promoted to the next higher table during the next week' \
                       ' if they are present.'
-        self.worksheet.merge_range(first_row=0, first_col=0, last_row=0, last_col=7,
+        self.worksheet.merge_range(first_row=0, first_col=0, last_row=0, last_col=8,
                                    data='League Summary - {}'.format(self.name),
                                    cell_format=self.summary_main_title_format)
-        self.worksheet.merge_range(first_row=2, first_col=1, last_row=2, last_col=6, data=description,
+        self.worksheet.merge_range(first_row=2, first_col=2, last_row=3, last_col=6, data=description,
                                    cell_format=self.summary_description_format)
 
     def make_table(self, title_row_num, header_row_num, group_num):
-        self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=6,
+        self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=7,
                                    data='Group ' + str(group_num), cell_format=self.summary_group_title_format)
         self.worksheet.write(header_row_num, 1, 'Seed', self.summary_header_format)
         self.worksheet.write(header_row_num, 2, 'Player', self.summary_header_format)
         self.worksheet.write(header_row_num, 3, 'Rating Before', self.summary_header_format)
         self.worksheet.write(header_row_num, 4, 'Matches Won', self.summary_header_format)
-        self.worksheet.write(header_row_num, 5, 'Rating Change', self.summary_header_format)
-        self.worksheet.write(header_row_num, 6, 'Rating After', self.summary_header_format)
+        self.worksheet.write(header_row_num, 5, 'Games Won', self.summary_header_format)
+        self.worksheet.write(header_row_num, 6, 'Rating Change', self.summary_header_format)
+        self.worksheet.write(header_row_num, 7, 'Rating After', self.summary_header_format)
 
     def write_to_table(self, group_size, group, first_data_row_num, match_winner):
         for i in range(0, group_size):
@@ -400,12 +406,19 @@ class SummarySheet:
             self.worksheet.write(row_num, 2, player_name, self.summary_bold_format)
             self.worksheet.write(row_num, 3, group.sorted_players[i].player_rating, self.summary_regular_format)
             self.worksheet.write(row_num, 4, group.sorted_players[i].matches_won, self.summary_regular_format)
-            self.worksheet.write(row_num, 5, group.sorted_players[i].rating_change, self.summary_regular_format)
-            self.worksheet.write(row_num, 6, group.sorted_players[i].final_rating, self.summary_bold_format)
+            self.worksheet.write(row_num, 5, group.sorted_players[i].games_won, self.summary_regular_format)
+            self.worksheet.write(row_num, 6, group.sorted_players[i].rating_change, self.summary_regular_format)
+            self.worksheet.write(row_num, 7, group.sorted_players[i].final_rating, self.summary_bold_format)
 
             len_longest_name = len_longest_substring(group.sorted_players[i].player_name)
-            if len_longest_name > self.player_name_col_len:
-                self.player_name_col_len = len_longest_name + 1
+            len_longest_full_name = len(group.sorted_players[i].player_name)
+
+            if len_longest_full_name + 6 > self.player_name_col_len:
+                self.player_name_col_len = len_longest_full_name + 6
+                self.worksheet.set_column(2, 2, self.player_name_col_len)
+
+            elif len_longest_name + 6 > self.player_name_col_len:
+                self.player_name_col_len = len_longest_name + 6
                 self.worksheet.set_column(2, 2, self.player_name_col_len)
 
 def check_quit(input_text):
