@@ -4,6 +4,7 @@ from pprint import pprint
 from tabulate import tabulate
 import shared_functions
 import httplib2
+import config
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/sheets_client_secret.json
@@ -12,11 +13,8 @@ CLIENT_SECRET_FILE = 'sheets_client_secret.json'
 APPLICATION_NAME = 'TT Automation - Sheets API'
 CACHE_FILE_NAME = 'sheets-api.json'
 
-# This is the live ID. Uncomment line 16 and comment line 19 to use the live id.
-# RATINGS_SPREADSHEET_ID = '1TzyleWIfON1ADruZxtbq8Xq0fl-HEHNgJakBVZ6WxqY'
-
-# This is the testing ID. Uncomment line 19 and comment line 16 to use the testing id.
-RATINGS_SPREADSHEET_ID = '1vE4qVg1_FP_vAknI2pr8-Z97aV9ZTYqDHqq2Hy6Ydi0'
+# Defaults to test env. If you want to use live env, go to config and set CURRENT_ENV = LIVE_ENV
+RATINGS_SPREADSHEET_ID = config.CURRENT_ENV['ratings_spreadsheet_id']
 
 def create_service():
     credentials = shared_functions.get_credentials(cache_file_name=CACHE_FILE_NAME,

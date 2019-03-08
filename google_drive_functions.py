@@ -1,6 +1,7 @@
 from __future__ import print_function
 import shared_functions
 import httplib2
+import config
 
 from pprint import pprint
 from apiclient import discovery, errors
@@ -15,11 +16,8 @@ CLIENT_SECRET_FILE = 'drive_client_secret.json'
 APPLICATION_NAME = 'TT Automation - Drive API'
 CACHE_FILE_NAME = 'drive-api.json'
 
-# This is the live ID. Uncomment line 19 and comment line 22 to use the live id.
-# RESULTS_FOLDER_ID = '0B9Mt_sNXCmNzbTVici1WYk1tcmc'
-
-# This is the testing ID. Uncomment line 22 and comment line 19 to use the testing id.
-RESULTS_FOLDER_ID = '1EfvFgtENNJ4LdY4FqGtJrYUbPfppm3C9'
+# Defaults to test env. If you want to use live env, go to config and set CURRENT_ENV = LIVE_ENV
+RESULTS_FOLDER_ID = config.CURRENT_ENV['results_folder_id']
 
 def get_credentials():
     credentials = shared_functions.get_credentials(cache_file_name=CACHE_FILE_NAME,
