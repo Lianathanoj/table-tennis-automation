@@ -5,10 +5,41 @@ import xlsxwriter
 import shared_functions
 import google_sheets_functions
 import operator
+import readline
+import logging
 import datetime
 import copy
 import sys
 import os
+
+LOG_FILENAME = 'completer.log'
+logging.basicConfig(
+    format='%(message)s',
+    filename=LOG_FILENAME,
+    level=logging.DEBUG,
+)
+
+class Completer:
+    def __init__(self, options):
+        self.options = sorted(options)
+
+    def complete(self, text, state):
+        response = None
+        if state == 0:
+            if text:
+                self.matches = [s for s in self.options if s and s.lower().startswith(text.lower())]
+                logging.debug('%s matches: %s', repr(text), self.matches)
+            else:
+                self.matches = self.options[:]
+                logging.debug('(empty input) matches: %s', self.matches)
+
+        try:
+            response = self.matches[state]
+        except IndexError:
+            response = None
+
+        logging.debug('complete(%s, %s) => %s', repr(text), state, repr(response))
+        return response
 
 class Player:
     def __init__(self, player_name, player_rating):
@@ -33,7 +64,7 @@ class Group:
         self.sorted_players = []
         self.group_winner = None
 
-    def get_info(self, league_roster_dict, backtrack=False):
+    def get_info(self, league_roster, league_roster_dict, backtrack=False):
         if backtrack:
             i = len(self.players) - 1
         else:
@@ -83,6 +114,11 @@ class Group:
             players_in_roster = []
             in_roster = False
             go_back = False
+
+            readline.set_completer(Completer(league_roster).complete)
+            readline.parse_and_bind('tab: complete')
+            print('Press tab to autocomplete names.')
+
             while 0 <= i < self.num_players:
                 if go_back and not in_roster:
                     j = 1
@@ -435,11 +471,10 @@ def correct_input(input_text, var_type):
     type_dict = {str: 'string', int: 'integer', 'match_input': 'match input, e.g. 3:2',
                  'date_input': 'date input.', 'rating_input': 'rating input.'}
     pre_input = input(input_text)
-
     check_quit(pre_input)
+
     if pre_input.lower().strip() in ['back', 'b'] and var_type != 'date_input':
         return 'back'
-
     if var_type == 'date_input':
         date_input = pre_input.strip().replace('\'', '')
         while True:
@@ -670,7 +705,7 @@ def generate_workbook():
     group_matches = []
     while 0 <= group_index < len(group_list):
         group = group_list[group_index]
-        if group.get_info(league_roster_dict, backtrack=backtrack) == 'backtrack':
+        if group.get_info(league_roster_list[1], league_roster_dict, backtrack=backtrack) == 'backtrack':
             group_index -= 1
             backtrack = False
             if group_index < 0:
@@ -680,6 +715,7 @@ def generate_workbook():
             else:
                 group_matches.pop()
         else:
+            readline.set_completer(None)
             match_inputs = get_match_inputs(group)
             if match_inputs == 'backtrack':
                 backtrack = True
