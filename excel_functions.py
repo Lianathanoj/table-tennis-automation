@@ -11,6 +11,8 @@ import datetime
 import copy
 import sys
 import os
+from collections import defaultdict
+import math
 
 LOG_FILENAME = 'completer.log'
 logging.basicConfig(
@@ -221,8 +223,8 @@ class Groups:
                         self.remove_group()
                         index -= 1
                         group_num = index + 1
-                elif num_players < 4:
-                    print('There has to be at least four people in a group. Try again.')
+                elif num_players < 3:
+                    print('There has to be at least three people in a group. Try again.')
                 elif num_players > 7:
                     print('There cannot be more than seven people in a group. Try again.')
                 else:
@@ -231,14 +233,15 @@ class Groups:
             index += 1
 
 class ResultSheet:
-    match_ordering_selection = {4: ['B:D', 'A:C', 'B:C', 'A:D', 'C:D', 'A:B'],
+    match_ordering_selection = {3: ['A:C', 'B:C', 'A:B'],
+                                4: ['B:D', 'A:C', 'B:C', 'A:D', 'C:D', 'A:B'],
                                 5: ['A:D', 'B:C', 'B:E', 'C:D', 'A:E', 'B:D', 'A:C', 'D:E', 'C:E', 'A:B'],
                                 6: ['A:D', 'B:C', 'E:F', 'A:E', 'B:D', 'C:F', 'B:F', 'D:E', 'A:C', 'A:F',
                                     'B:E', 'C:D', 'C:E', 'D:F', 'A:B'],
                                 7: ['A:F', 'B:E', 'C:D', 'B:G', 'C:F', 'D:E', 'A:E', 'B:D', 'C:G', 'A:C', 'D:F',
                                     'E:G', 'F:G', 'A:D', 'B:C', 'A:B', 'E:F', 'D:G', 'A:G', 'B:F', 'C:E']}
     letter_dict = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
-    last_row_selection = {4: 20, 5: 33, 6: 48, 7: 66}
+    last_row_selection = {3: 11, 4: 20, 5: 33, 6: 48, 7: 66}
 
     def __init__(self, sheet, group, results_regular_format, results_group_title_format, results_merge_format,
                  results_header_format):
@@ -256,15 +259,85 @@ class ResultSheet:
         self.match_winner = None
         self.match_list = []
 
-    def get_match_winner(self):
-        most_matches_won = max(self.group.sorted_players, key=lambda player: player.matches_won).matches_won
-        players_most_matches = list(filter(lambda player: player.matches_won == most_matches_won,
-                                           self.group.sorted_players))
-        most_games_won = max(players_most_matches, key=lambda player: player.games_won).games_won
-        players_most_matches_games = list(filter(lambda player: player.games_won == most_games_won,
-                                               players_most_matches))
-        match_winner = sorted(players_most_matches_games, key=lambda player: player.final_rating)[-1]
-        return match_winner
+    def get_match_winner(self, matches):
+        # most_matches_won = max(self.group.sorted_players, key=lambda player: player.matches_won).matches_won
+        # players_most_matches = list(filter(lambda player: player.matches_won == most_matches_won,
+        #                                    self.group.sorted_players))
+        # most_games_won = max(players_most_matches, key=lambda player: player.games_won).games_won
+        # players_most_matches_games = list(filter(lambda player: player.games_won == most_games_won,
+        #                                        players_most_matches))
+        # match_winner = sorted(players_most_matches_games, key=lambda player: player.final_rating)[-1]
+        # return match_winner
+
+        #Sort by matches won, ties broken with games won
+        match_winner_groups = []
+        sort_match_winner = sorted(self.group.sorted_players, key=lambda player: player.games_won, reverse=True)
+        sort_match_winner = sorted(sort_match_winner, key=lambda player: player.matches_won, reverse=True)
+        #Check for further ties
+        start = 0
+        end = 1
+        while(start != len(sort_match_winner)-1):
+            if (sort_match_winner[start].matches_won == sort_match_winner[end].matches_won) and (sort_match_winner[start].games_won == sort_match_winner[end].games_won):
+                if end+1 < len(sort_match_winner):
+                    end+=1
+                else:
+                    match_winner_groups.append(sort_match_winner[start:])
+                    break
+            else:
+                #if two-way tie get h2h
+                if end-start == 2:
+                    player1_index = self.group.sorted_players.index(sort_match_winner[start])
+                    player2_index = self.group.sorted_players.index(sort_match_winner[start+1])
+                    if player2_index < player1_index:
+                        sort_match_winner[start], sort_match_winner[start+1] = sort_match_winner[start+1], sort_match_winner[start]
+                        tempIndex = player2_index
+                        player2_index = player1_index
+                        player1_index = tempIndex
+                    for key, val in ResultSheet.letter_dict.items():
+                        if val == player1_index:
+                            player1_letter = key
+                        if val == player2_index:
+                            player2_letter = key
+                    index = self.match_ordering.index(player1_letter+':'+player2_letter)
+                    if int(matches[index][0]) < int(matches[index][2]):
+                        sort_match_winner[start], sort_match_winner[start+1] = sort_match_winner[start+1], sort_match_winner[start]
+                    match_winner_groups.append([sort_match_winner[start]])
+                    match_winner_groups.append([sort_match_winner[start+1]])
+                #if more than two-way tie accept tie
+                elif end-start > 2:
+                    match_winner_groups.append(sort_match_winner[start:end])
+                #if no tie
+                elif end-start == 1:
+                    match_winner_groups.append([sort_match_winner[start]])
+
+                start = end
+                if start+1 < len(sort_match_winner):
+                    end = start + 1
+                else:
+                    match_winner_groups.append([sort_match_winner[start]])
+                    break
+        return match_winner_groups
+
+    def get_group_prize_points(self):
+        prize_points_amounts = {1: [10,8,6,4,2,2,2],
+                                2: [8,6,4,2,2,2,2],
+                                3: [8,6,4,2,2,2,2],
+                                4: [7,5,3,1,1,1,1],
+                                5: [7,5,3,1,1,1,1],
+                                6: [7,5,3,1,1,1,1],
+                                7: [7,5,3,1,1,1,1],
+                                8: [7,5,3,1,1,1,1]}
+        group_prize_points = {}
+        rank = 0
+        for i in self.match_winner:
+            if len(i) == 1:
+                group_prize_points[i[0].player_name] = prize_points_amounts[self.group.group_num][rank]
+            elif len(i) > 1:
+                point_value = math.ceil(sum(prize_points_amounts[self.group.group_num][rank:rank+len(i)])/len(i))
+                for j in i:
+                    group_prize_points[j.player_name] = point_value
+            rank += len(i)
+        return group_prize_points
 
     def higher_rating_is_winner(self, match):
         games_won = match[0]
@@ -383,7 +456,7 @@ class ResultSheet:
         for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
 
-        self.match_winner = self.get_match_winner()
+        self.match_winner = self.get_match_winner(matches)
 
 class SummarySheet:
     seed_letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
@@ -435,7 +508,7 @@ class SummarySheet:
         for i in range(0, group_size):
             row_num = i + first_data_row_num
             player_name = group.sorted_players[i].player_name
-            if group.sorted_players[i] is match_winner:
+            if group.sorted_players[i] in match_winner[0]:
                 player_name += "**"
 
             self.worksheet.write(row_num, 1, SummarySheet.seed_letters[i], self.summary_regular_format)
@@ -677,6 +750,13 @@ def get_ratings_sheet_name(file_name):
 
     return sheet_name
 
+def get_prize_points_sheet_name(file_name):
+    if 'Fall' in file_name:
+        prize_points_sheet_name = str(file_name[5:])+"-"+str(int(file_name[5:])+1)
+    else:
+        prize_points_sheet_name = str(int(file_name[7:])-1)+"-"+str(file_name[7:])
+    return prize_points_sheet_name
+
 def generate_workbook():
     print('_______________________________________________________________________________')
     print("Basic rules for league at GTTTA:\n")
@@ -698,6 +778,8 @@ def generate_workbook():
     service = google_sheets_functions.create_service()
     ratings_sheet_name = get_ratings_sheet_name(file_name)
     league_roster_list, league_roster_dict = google_sheets_functions.get_league_roster(service, ratings_sheet_name)
+    prize_points_sheet_name = get_prize_points_sheet_name(ratings_sheet_name)
+    prize_points_dict, points_used, numLeagues = google_sheets_functions.get_prize_points(service, prize_points_sheet_name)
     ratings_sheet_start_row_index = len(league_roster_dict) + 1
 
     group_index = 0
@@ -705,7 +787,11 @@ def generate_workbook():
     group_matches = []
     while 0 <= group_index < len(group_list):
         group = group_list[group_index]
-        if group.get_info(league_roster_list[1], league_roster_dict, backtrack=backtrack) == 'backtrack':
+        if league_roster_list == None:
+            league_roster = []
+        else:
+            league_roster = league_roster_list[1]
+        if group.get_info(league_roster, league_roster_dict, backtrack=backtrack) == 'backtrack':
             group_index -= 1
             backtrack = False
             if group_index < 0:
@@ -729,10 +815,14 @@ def generate_workbook():
 
     summary_sheet.create_title_info()
 
+    prize_points = {}
     for group, matches in group_matches:
         sheet = workbook.add_worksheet(group.group_name)
         result_sheet = ResultSheet(sheet, group, *all_info['results_info'])
         result_sheet.construct_sheet(league_roster_dict, matches)
+        group_prize_points = result_sheet.get_group_prize_points()
+        for key, value in group_prize_points.items():
+            prize_points[key] = value
         header_row_num = title_row_num + 1
         first_data_row_num = header_row_num + 1
         last_row_num = header_row_num + group.num_players
@@ -757,6 +847,14 @@ def generate_workbook():
                                                    start_row_index=ratings_sheet_start_row_index,
                                                    end_row_index=ratings_sheet_end_row_index,
                                                    sheet_name=ratings_sheet_name)
+
+    prize_points_dict[file_name[:-5]] = prize_points
+    google_sheets_functions.write_to_prize_points_sheet(service=service, roster=league_roster_dict.keys(),
+                                                        prize_points=prize_points_dict,
+                                                        points_used=points_used, num_leagues = numLeagues,
+                                                        start_row_index=ratings_sheet_start_row_index,
+                                                        end_row_index=ratings_sheet_end_row_index,
+                                                        sheet_name=prize_points_sheet_name)
     return file_name
 
 if __name__ == "__main__":
