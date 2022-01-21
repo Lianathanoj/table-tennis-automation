@@ -13,7 +13,7 @@ process and cuts down the total process by 10-20 minutes to <1 minute everytime.
 * Supports an unlimited amount of groups from 4-person to 7-person groups
 * Supports backtracking in case you input the wrong value or make a mistake (might be buggy in some cases)
 * Authenticates based upon if you have the necessary permissions and caches your credentials if they're valid
-* Automatically does calculations for rating changes, match winners, table winners, and school year and semester
+* Automatically does calculations for rating changes, match winners, table winners, league points, and school year and semester
 * Automatically generates a new year folder if no semester folders exist for that year yet
 * Automatically generates a new semester folder if no league sheets exist for that semester folder yet
 * Automatically uploads the league sheet to the relevant folders (year, semester) in the Google Drive if they exist
