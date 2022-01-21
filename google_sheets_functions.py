@@ -562,7 +562,7 @@ def generate_prize_points_sheet(service, sheet_name):
 def write_to_prize_points_sheet(service, roster, prize_points, points_used, num_leagues, start_row_index, end_row_index, sheet_name):
     sheet_id = get_sheet_id(service, PRIZE_POINTS_SPREADSHEET_ID, sheet_name)
     roster = sorted(roster)
-    
+
     write_data = []
     for i in prize_points.keys():
         col_data = [i]

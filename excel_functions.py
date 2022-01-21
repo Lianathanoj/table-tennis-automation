@@ -260,15 +260,6 @@ class ResultSheet:
         self.match_list = []
 
     def get_match_winner(self, matches):
-        # most_matches_won = max(self.group.sorted_players, key=lambda player: player.matches_won).matches_won
-        # players_most_matches = list(filter(lambda player: player.matches_won == most_matches_won,
-        #                                    self.group.sorted_players))
-        # most_games_won = max(players_most_matches, key=lambda player: player.games_won).games_won
-        # players_most_matches_games = list(filter(lambda player: player.games_won == most_games_won,
-        #                                        players_most_matches))
-        # match_winner = sorted(players_most_matches_games, key=lambda player: player.final_rating)[-1]
-        # return match_winner
-
         #Sort by matches won, ties broken with games won
         match_winner_groups = []
         sort_match_winner = sorted(self.group.sorted_players, key=lambda player: player.games_won, reverse=True)
