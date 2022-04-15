@@ -563,6 +563,37 @@ def write_to_prize_points_sheet(service, roster, prize_points, points_used, num_
     sheet_id = get_sheet_id(service, PRIZE_POINTS_SPREADSHEET_ID, sheet_name)
     roster = sorted(roster)
 
+    set_bold_font_body = {
+        'requests': [{
+            'repeatCell': {
+                'range': {
+                    'sheetId': sheet_id,
+                    'startRowIndex': start_row_index,
+                    'endRowIndex': end_row_index,
+                    'startColumnIndex': 0,
+                    'endColumnIndex': 1
+                },
+                'cell': {
+                    'userEnteredFormat': {
+                        'horizontalAlignment': 'CENTER',
+                        'verticalAlignment': 'MIDDLE',
+                        'wrapStrategy': 'WRAP',
+                        'textFormat': {
+                            'fontSize': 12,
+                            'bold': True
+                        }
+                    }
+                },
+                'fields': 'userEnteredFormat(, textFormat, horizontalAlignment, verticalAlignment, wrapStrategy)'
+            }
+        }]
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=PRIZE_POINTS_SPREADSHEET_ID,
+        body=set_bold_font_body
+    ).execute()
+
     write_data = []
     for i in prize_points.keys():
         col_data = [i]
