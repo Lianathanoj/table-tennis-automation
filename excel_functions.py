@@ -406,43 +406,57 @@ class ResultSheet:
         self.sheet_merger()
         self.header_writer()
 
-        for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
-            player_one_letter = self.match_ordering[index][0]
-            player_two_letter = self.match_ordering[index][2]
-            player_one = self.group.sorted_players[ResultSheet.letter_dict[player_one_letter]]
-            player_two = self.group.sorted_players[ResultSheet.letter_dict[player_two_letter]]
-            match = matches[index]
+        while True:
+            adjustRating = False
+            for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
+                player_one_letter = self.match_ordering[index][0]
+                player_two_letter = self.match_ordering[index][2]
+                player_one = self.group.sorted_players[ResultSheet.letter_dict[player_one_letter]]
+                player_two = self.group.sorted_players[ResultSheet.letter_dict[player_two_letter]]
+                match = matches[index]
 
-            if len(match) == 0 or (int(match[0]) == int(match[2]) == 0):
-                point_change = 0
-                self.sheet.write('C' + str(row_num), 0, self.results_regular_format)
-                self.sheet.write('C' + str(row_num + 1), 0, self.results_regular_format)
-            else:
-                point_change = self.rating_calc(player_one.player_rating, player_two.player_rating,
-                                                self.higher_rating_is_winner(match))
-                if int(match[0]) > int(match[2]):
-                    player_one.matches_won += 1
-                elif int(match[0]) < int(match[2]):
-                    player_two.matches_won += 1
+                if len(match) == 0 or (int(match[0]) == int(match[2]) == 0):
+                    point_change = 0
+                    self.sheet.write('C' + str(row_num), 0, self.results_regular_format)
+                    self.sheet.write('C' + str(row_num + 1), 0, self.results_regular_format)
+                else:
+                    point_change = self.rating_calc(player_one.player_rating, player_two.player_rating,
+                                                    self.higher_rating_is_winner(match))
+                    if int(match[0]) > int(match[2]):
+                        player_one.matches_won += 1
+                    elif int(match[0]) < int(match[2]):
+                        player_two.matches_won += 1
 
-                player_one.games_won += int(match[0])
-                player_two.games_won += int(match[2])
-                self.sheet.write('C' + str(row_num), int(match[0]), self.results_regular_format)
-                self.sheet.write('C' + str(row_num + 1), int(match[2]), self.results_regular_format)
+                    player_one.games_won += int(match[0])
+                    player_two.games_won += int(match[2])
+                    self.sheet.write('C' + str(row_num), int(match[0]), self.results_regular_format)
+                    self.sheet.write('C' + str(row_num + 1), int(match[2]), self.results_regular_format)
 
-            self.sheet.write('A' + str(row_num), player_one_letter, self.results_regular_format)
-            self.sheet.write('B' + str(row_num), player_one.player_name, self.results_regular_format)
-            self.sheet.write('D' + str(row_num), player_one.player_rating, self.results_regular_format)
-            self.sheet.write('E' + str(row_num), point_change, self.results_regular_format)
-            self.sheet.write('A' + str(row_num + 1), player_two_letter, self.results_regular_format)
-            self.sheet.write('B' + str(row_num + 1), player_two.player_name, self.results_regular_format)
-            self.sheet.write('D' + str(row_num + 1), player_two.player_rating, self.results_regular_format)
-            self.sheet.write('E' + str(row_num + 1), -point_change, self.results_regular_format)
+                self.sheet.write('A' + str(row_num), player_one_letter, self.results_regular_format)
+                self.sheet.write('B' + str(row_num), player_one.player_name, self.results_regular_format)
+                self.sheet.write('D' + str(row_num), player_one.player_rating, self.results_regular_format)
+                self.sheet.write('E' + str(row_num), point_change, self.results_regular_format)
+                self.sheet.write('A' + str(row_num + 1), player_two_letter, self.results_regular_format)
+                self.sheet.write('B' + str(row_num + 1), player_two.player_name, self.results_regular_format)
+                self.sheet.write('D' + str(row_num + 1), player_two.player_rating, self.results_regular_format)
+                self.sheet.write('E' + str(row_num + 1), -point_change, self.results_regular_format)
 
-            player_one.final_rating += point_change
-            player_one.rating_change += point_change
-            player_two.final_rating -= point_change
-            player_two.rating_change -= point_change
+                player_one.final_rating += point_change
+                player_one.rating_change += point_change
+                player_two.final_rating -= point_change
+                player_two.rating_change -= point_change
+
+            for player in self.group.sorted_players:
+                if(player.rating_change >= 50):
+                    player.player_rating = player.final_rating
+                    adjustRating = True
+            if not adjustRating:
+                break
+            for player in self.group.sorted_players:
+                player.rating_change = 0
+                player.final_rating = player.player_rating
+                player.matches_won = 0
+                player.games_won = 0
 
         for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
