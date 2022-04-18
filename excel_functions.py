@@ -46,14 +46,14 @@ class Completer:
 class Player:
     def __init__(self, player_name, player_rating):
         self.player_name = player_name
-        self.player_rating = player_rating
+        self.player_rating = [player_rating, player_rating] #[initial rating, adjusted rating]
         self.final_rating = player_rating
         self.matches_won = 0
         self.games_won = 0
         self.rating_change = 0
 
     def __str__(self):
-        return str(self.player_name) + " (" + str(self.player_rating) + ")"
+        return str(self.player_name) + " (" + str(self.player_rating[0]) + ")"
 
 class Group:
     letter_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
@@ -101,7 +101,7 @@ class Group:
                         else:
                             if go_back or backtrack:
                                 old_player_info = copy.deepcopy(self.players[i])
-                                self.players[i].player_rating = player_rating
+                                self.players[i].player_rating = [player_rating, player_rating]
                                 print("{} has been amended to {}.\n".format(old_player_info, self.players[i]))
                             else:
                                 player_info = Player(player_name=player_name, player_rating=player_rating)
@@ -169,7 +169,7 @@ class Group:
                                     players_in_roster.append(False)
                                 if go_back:
                                     old_player_info = copy.deepcopy(self.players[i])
-                                    self.players[i].player_rating = player_rating
+                                    self.players[i].player_rating = [player_rating, player_rating]
                                     print("{} has been amended to {}.\n".format(old_player_info, self.players[i]))
                                 else:
                                     player_info = Player(player_name=player_name, player_rating=player_rating)
@@ -187,7 +187,7 @@ class Group:
         return 'continue'
 
     def sort_ratings(self):
-        self.sorted_players = sorted(self.players, key=lambda player: player.player_rating, reverse=True)
+        self.sorted_players = sorted(self.players, key=lambda player: player.player_rating[0], reverse=True)
 
 class Groups:
     def __init__(self, num_groups=0, group_list=[]):
@@ -330,46 +330,50 @@ class ResultSheet:
             rank += len(i)
         return group_prize_points
 
-    def higher_rating_is_winner(self, match):
+    def first_player_is_winner(self, match):
         games_won = match[0]
         games_lost = match[2]
         if games_won == games_lost:
             return 'tied'
         return int(games_won) > int(games_lost)
 
-    def rating_calc(self, higher_rating, lower_rating, higher_rating_is_winner):
-        difference = higher_rating - lower_rating
+    def rating_calc(self, first_rating, second_rating, first_player_is_winner):
+        difference = first_rating - second_rating
+        abs_difference = abs(difference)
+        higher_is_first = True if difference > 0 else False
         rating_increment = 25
         min_rating_threshold = 13
         max_rating_threshold = min_rating_threshold + rating_increment * 9 + 1
 
-        if higher_rating_is_winner == 'tied':
+        if first_player_is_winner == 'tied':
             return 0
-        elif higher_rating_is_winner:
+        # expected
+        elif (first_player_is_winner and higher_is_first) or (not first_player_is_winner and not higher_is_first):
             point_change = 8
-            if 138 <= difference < 188:
+            if 138 <= abs_difference < 188:
                 return 2
-            elif 188 <= difference < 238:
+            elif 188 <= abs_difference < 238:
                 return 1
-            elif difference >= 238:
+            elif abs_difference >= 238:
                 return 0
             for difference_threshold in range(min_rating_threshold, 139, rating_increment):
-                if difference < difference_threshold:
+                if abs_difference < difference_threshold:
                     return point_change
                 else:
                     point_change -= 1
+        # upset
         else:
             point_change = -20
-            if difference < 13:
+            if abs_difference < 13:
                 return -8
-            elif 13 <= difference < 38:
+            elif 13 <= abs_difference < 38:
                 return -10
-            elif 38 <= difference < 63:
+            elif 38 <= abs_difference < 63:
                 return -13
-            elif 63 <= difference < 88:
+            elif 63 <= abs_difference < 88:
                 return -16
             for difference_threshold in range(113, max_rating_threshold, rating_increment):
-                if difference < difference_threshold:
+                if abs_difference < difference_threshold:
                     return point_change
                 else:
                     point_change -= 5
@@ -406,8 +410,8 @@ class ResultSheet:
         self.sheet_merger()
         self.header_writer()
 
-        while True:
-            adjustRating = False
+        # 2 passes: first pass to see if need to adjust ratings, second pass with adjusted ratings if necessary
+        for i in range(2):
             for index, row_num in enumerate(range(self.first_row, self.last_row, 3)):
                 player_one_letter = self.match_ordering[index][0]
                 player_two_letter = self.match_ordering[index][2]
@@ -420,8 +424,10 @@ class ResultSheet:
                     self.sheet.write('C' + str(row_num), 0, self.results_regular_format)
                     self.sheet.write('C' + str(row_num + 1), 0, self.results_regular_format)
                 else:
-                    point_change = self.rating_calc(player_one.player_rating, player_two.player_rating,
-                                                    self.higher_rating_is_winner(match))
+                    point_change = self.rating_calc(player_one.player_rating[i], player_two.player_rating[i],
+                                                    self.first_player_is_winner(match))
+                    if player_one.player_rating[i] - player_two.player_rating[i] < 0:
+                        point_change = -point_change
                     if int(match[0]) > int(match[2]):
                         player_one.matches_won += 1
                     elif int(match[0]) < int(match[2]):
@@ -434,11 +440,11 @@ class ResultSheet:
 
                 self.sheet.write('A' + str(row_num), player_one_letter, self.results_regular_format)
                 self.sheet.write('B' + str(row_num), player_one.player_name, self.results_regular_format)
-                self.sheet.write('D' + str(row_num), player_one.player_rating, self.results_regular_format)
+                self.sheet.write('D' + str(row_num), player_one.player_rating[1], self.results_regular_format)
                 self.sheet.write('E' + str(row_num), point_change, self.results_regular_format)
                 self.sheet.write('A' + str(row_num + 1), player_two_letter, self.results_regular_format)
                 self.sheet.write('B' + str(row_num + 1), player_two.player_name, self.results_regular_format)
-                self.sheet.write('D' + str(row_num + 1), player_two.player_rating, self.results_regular_format)
+                self.sheet.write('D' + str(row_num + 1), player_two.player_rating[1], self.results_regular_format)
                 self.sheet.write('E' + str(row_num + 1), -point_change, self.results_regular_format)
 
                 player_one.final_rating += point_change
@@ -446,17 +452,21 @@ class ResultSheet:
                 player_two.final_rating -= point_change
                 player_two.rating_change -= point_change
 
-            for player in self.group.sorted_players:
-                if(player.rating_change >= 50):
-                    player.player_rating = player.final_rating
-                    adjustRating = True
-            if not adjustRating:
-                break
-            for player in self.group.sorted_players:
-                player.rating_change = 0
-                player.final_rating = player.player_rating
-                player.matches_won = 0
-                player.games_won = 0
+            # determine if ratings need to be adjusted and second pass needed
+            if i == 0:
+                adjustRating = False
+                for player in self.group.sorted_players:
+                    if(player.rating_change >= 50):
+                        player.player_rating[1] = player.final_rating
+                        adjustRating = True
+                if not adjustRating:
+                    i += 1
+                else:
+                    for player in self.group.sorted_players:
+                        player.rating_change = 0
+                        player.final_rating = player.player_rating[1]
+                        player.matches_won = 0
+                        player.games_won = 0
 
         for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
@@ -483,11 +493,12 @@ class SummarySheet:
         self.worksheet.set_column(1, 1, len_longest_substring('Seed') + 3)
         self.worksheet.set_column(2, 2, self.player_name_col_len)
         self.worksheet.set_column(3, 3, len_longest_substring('Rating Before') + 3)
-        self.worksheet.set_column(4, 4, len_longest_substring('Matches Won') + 3)
-        self.worksheet.set_column(5, 5, len_longest_substring('Games Won') + 3)
-        self.worksheet.set_column(6, 6, len_longest_substring('Rating Change') + 3)
-        self.worksheet.set_column(7, 7, len_longest_substring('Rating After') + 3)
-        self.worksheet.set_column(8, 8, 5)
+        self.worksheet.set_column(4, 4, len_longest_substring('Adjusted Rating') + 3)
+        self.worksheet.set_column(5, 5, len_longest_substring('Matches Won') + 3)
+        self.worksheet.set_column(6, 6, len_longest_substring('Games Won') + 3)
+        self.worksheet.set_column(7, 7, len_longest_substring('Rating Change') + 3)
+        self.worksheet.set_column(8, 8, len_longest_substring('Rating After') + 3)
+        self.worksheet.set_column(9, 9, 5)
 
     def create_title_info(self):
         description = 'Group winners (denoted by **) are promoted to the next higher table during the next week' \
@@ -499,15 +510,16 @@ class SummarySheet:
                                    cell_format=self.summary_description_format)
 
     def make_table(self, title_row_num, header_row_num, group_num):
-        self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=7,
+        self.worksheet.merge_range(first_row=title_row_num, first_col=1, last_row=title_row_num, last_col=8,
                                    data='Group ' + str(group_num), cell_format=self.summary_group_title_format)
         self.worksheet.write(header_row_num, 1, 'Seed', self.summary_header_format)
         self.worksheet.write(header_row_num, 2, 'Player', self.summary_header_format)
         self.worksheet.write(header_row_num, 3, 'Rating Before', self.summary_header_format)
-        self.worksheet.write(header_row_num, 4, 'Matches Won', self.summary_header_format)
-        self.worksheet.write(header_row_num, 5, 'Games Won', self.summary_header_format)
-        self.worksheet.write(header_row_num, 6, 'Rating Change', self.summary_header_format)
-        self.worksheet.write(header_row_num, 7, 'Rating After', self.summary_header_format)
+        self.worksheet.write(header_row_num, 4, 'Adjusted Rating', self.summary_header_format)
+        self.worksheet.write(header_row_num, 5, 'Matches Won', self.summary_header_format)
+        self.worksheet.write(header_row_num, 6, 'Games Won', self.summary_header_format)
+        self.worksheet.write(header_row_num, 7, 'Rating Change', self.summary_header_format)
+        self.worksheet.write(header_row_num, 8, 'Rating After', self.summary_header_format)
 
     def write_to_table(self, group_size, group, first_data_row_num, match_winner):
         for i in range(0, group_size):
@@ -518,11 +530,12 @@ class SummarySheet:
 
             self.worksheet.write(row_num, 1, SummarySheet.seed_letters[i], self.summary_regular_format)
             self.worksheet.write(row_num, 2, player_name, self.summary_bold_format)
-            self.worksheet.write(row_num, 3, group.sorted_players[i].player_rating, self.summary_regular_format)
-            self.worksheet.write(row_num, 4, group.sorted_players[i].matches_won, self.summary_regular_format)
-            self.worksheet.write(row_num, 5, group.sorted_players[i].games_won, self.summary_regular_format)
-            self.worksheet.write(row_num, 6, group.sorted_players[i].rating_change, self.summary_regular_format)
-            self.worksheet.write(row_num, 7, group.sorted_players[i].final_rating, self.summary_bold_format)
+            self.worksheet.write(row_num, 3, group.sorted_players[i].player_rating[0], self.summary_regular_format)
+            self.worksheet.write(row_num, 4, group.sorted_players[i].player_rating[1], self.summary_regular_format)
+            self.worksheet.write(row_num, 5, group.sorted_players[i].matches_won, self.summary_regular_format)
+            self.worksheet.write(row_num, 6, group.sorted_players[i].games_won, self.summary_regular_format)
+            self.worksheet.write(row_num, 7, group.sorted_players[i].rating_change, self.summary_regular_format)
+            self.worksheet.write(row_num, 8, group.sorted_players[i].final_rating, self.summary_bold_format)
 
             len_longest_name = len_longest_substring(group.sorted_players[i].player_name)
             len_longest_full_name = len(group.sorted_players[i].player_name)
