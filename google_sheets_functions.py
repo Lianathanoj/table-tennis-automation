@@ -10,10 +10,10 @@ import xlsxwriter
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/sheets_client_secret.json
-SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
-CLIENT_SECRET_FILE = 'sheets_client_secret.json'
-APPLICATION_NAME = 'TT Automation - Sheets API'
-CACHE_FILE_NAME = 'sheets-api.json'
+SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets']
+CLIENT_SECRET_FILE = 'client_secret.json'
+APPLICATION_NAME = 'TT Automation'
+CACHE_FILE_NAME = 'api.json'
 
 # Defaults to test env. If you want to use live env, go to config and set CURRENT_ENV = LIVE_ENV
 RATINGS_SPREADSHEET_ID = config.CURRENT_ENV['ratings_spreadsheet_id']

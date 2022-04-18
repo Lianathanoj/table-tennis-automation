@@ -11,10 +11,10 @@ from webbrowser import open
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/drive_client_secret.json
-SCOPES = 'https://www.googleapis.com/auth/drive'
-CLIENT_SECRET_FILE = 'drive_client_secret.json'
-APPLICATION_NAME = 'TT Automation - Drive API'
-CACHE_FILE_NAME = 'drive-api.json'
+SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets']
+CLIENT_SECRET_FILE = 'client_secret.json'
+APPLICATION_NAME = 'TT Automation'
+CACHE_FILE_NAME = 'api.json'
 
 # Defaults to test env. If you want to use live env, go to config and set CURRENT_ENV = LIVE_ENV
 RESULTS_FOLDER_ID = config.CURRENT_ENV['results_folder_id']
