@@ -454,19 +454,13 @@ class ResultSheet:
 
             # determine if ratings need to be adjusted and second pass needed
             if i == 0:
-                adjustRating = False
                 for player in self.group.sorted_players:
                     if(player.rating_change >= 50):
                         player.player_rating[1] = player.final_rating
-                        adjustRating = True
-                if not adjustRating:
-                    i += 1
-                else:
-                    for player in self.group.sorted_players:
-                        player.rating_change = 0
-                        player.final_rating = player.player_rating[1]
-                        player.matches_won = 0
-                        player.games_won = 0
+                    player.rating_change = 0
+                    player.final_rating = player.player_rating[1]
+                    player.matches_won = 0
+                    player.games_won = 0
 
         for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
