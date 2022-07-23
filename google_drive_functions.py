@@ -46,8 +46,8 @@ def determine_year_folder_id(service, file_name):
             split_file_name = shared_functions.file_name_split(folder['name'].strip())
             if [element for element in split_file_name if element.isdigit()]:
                 year_beginning, year_end = tuple(split_file_name)
-                date_beginning = datetime_date(int(year_beginning), 8, 1)
-                date_end = datetime_date(int(year_end), 7, 31)
+                date_beginning = datetime_date(int(year_beginning), 5, 1)
+                date_end = datetime_date(int(year_end), 4, 30)
                 if date_beginning <= datetime_date(year, month, day) <= date_end:
                     return folder['id']
     return generate_year_folder_id(service=service, file_name=file_name)
@@ -88,7 +88,7 @@ def determine_semester_folder_id(service, file_name, is_tryouts, year_folder_id)
 
 def generate_year_folder_id(service, file_name):
     month, day, year = file_name
-    date_beginning = datetime_date(year, 8, 1)
+    date_beginning = datetime_date(year, 5, 1)
     league_date = datetime_date(year, month, day)
 
     if league_date < date_beginning:

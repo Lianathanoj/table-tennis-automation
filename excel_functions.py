@@ -180,14 +180,14 @@ class Group:
                                 j += 1
             if i < 0:
                 return 'backtrack'
-        self.sort_ratings()
+        self.sort_ratings(0)
         for index, player in enumerate(self.sorted_players):
             print('{}: {}'.format(Group.letter_list[index], player))
         print('')
         return 'continue'
 
-    def sort_ratings(self):
-        self.sorted_players = sorted(self.players, key=lambda player: player.player_rating[0], reverse=True)
+    def sort_ratings(self, idx):
+        self.sorted_players = sorted(self.players, key=lambda player: player.player_rating[idx], reverse=True)
 
 class Groups:
     def __init__(self, num_groups=0, group_list=[]):
@@ -330,50 +330,48 @@ class ResultSheet:
             rank += len(i)
         return group_prize_points
 
-    def first_player_is_winner(self, match):
+    def higher_rating_is_winner(self, match):
         games_won = match[0]
         games_lost = match[2]
         if games_won == games_lost:
             return 'tied'
         return int(games_won) > int(games_lost)
 
-    def rating_calc(self, first_rating, second_rating, first_player_is_winner):
-        difference = first_rating - second_rating
-        abs_difference = abs(difference)
-        higher_is_first = True if difference > 0 else False
+    def rating_calc(self, higher_rating, lower_rating, higher_rating_is_winner):
+        difference = higher_rating - lower_rating
         rating_increment = 25
         min_rating_threshold = 13
         max_rating_threshold = min_rating_threshold + rating_increment * 9 + 1
 
-        if first_player_is_winner == 'tied':
+        if higher_rating_is_winner == 'tied':
             return 0
         # expected
-        elif (first_player_is_winner and higher_is_first) or (not first_player_is_winner and not higher_is_first):
+        elif higher_rating_is_winner:
             point_change = 8
-            if 138 <= abs_difference < 188:
+            if 138 <= difference < 188:
                 return 2
-            elif 188 <= abs_difference < 238:
+            elif 188 <= difference < 238:
                 return 1
-            elif abs_difference >= 238:
+            elif difference >= 238:
                 return 0
             for difference_threshold in range(min_rating_threshold, 139, rating_increment):
-                if abs_difference < difference_threshold:
+                if difference < difference_threshold:
                     return point_change
                 else:
                     point_change -= 1
         # upset
         else:
             point_change = -20
-            if abs_difference < 13:
+            if difference < 13:
                 return -8
-            elif 13 <= abs_difference < 38:
+            elif 13 <= difference < 38:
                 return -10
-            elif 38 <= abs_difference < 63:
+            elif 38 <= difference < 63:
                 return -13
-            elif 63 <= abs_difference < 88:
+            elif 63 <= difference < 88:
                 return -16
             for difference_threshold in range(113, max_rating_threshold, rating_increment):
-                if abs_difference < difference_threshold:
+                if difference < difference_threshold:
                     return point_change
                 else:
                     point_change -= 5
@@ -425,9 +423,7 @@ class ResultSheet:
                     self.sheet.write('C' + str(row_num + 1), 0, self.results_regular_format)
                 else:
                     point_change = self.rating_calc(player_one.player_rating[i], player_two.player_rating[i],
-                                                    self.first_player_is_winner(match))
-                    if player_one.player_rating[i] - player_two.player_rating[i] < 0:
-                        point_change = -point_change
+                                                    self.higher_rating_is_winner(match))
                     if int(match[0]) > int(match[2]):
                         player_one.matches_won += 1
                     elif int(match[0]) < int(match[2]):
@@ -461,6 +457,7 @@ class ResultSheet:
                     player.final_rating = player.player_rating[1]
                     player.matches_won = 0
                     player.games_won = 0
+                self.group.sort_ratings(1)
 
         for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
@@ -765,7 +762,9 @@ def get_ratings_sheet_name(file_name):
 def get_prize_points_sheet_name(file_name):
     if 'Fall' in file_name:
         prize_points_sheet_name = str(file_name[5:])+"-"+str(int(file_name[5:])+1)
-    else:
+    elif 'Summer' in file_name:
+        prize_points_sheet_name = str(file_name[7:])+"-"+str(int(file_name[7:])+1)
+    else: #spring
         prize_points_sheet_name = str(int(file_name[7:])-1)+"-"+str(file_name[7:])
     return prize_points_sheet_name
 

@@ -408,7 +408,7 @@ def get_prize_points_sheet_info(service, sheet_name):
         result = service.spreadsheets().values().get(
             spreadsheetId=PRIZE_POINTS_SPREADSHEET_ID, range=range, majorDimension='ROWS').execute()
         values = result.get('values', [])
-        if not values:
+        if not numLeagues:
             print('No prize points found for this semester.')
         else:
             print('Prize points detected.\n')
