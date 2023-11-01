@@ -451,13 +451,12 @@ class ResultSheet:
             # determine if ratings need to be adjusted and second pass needed
             if i == 0:
                 for player in self.group.sorted_players:
-                    if(player.rating_change >= 50):
+                    if player.rating_change >= 50:
                         player.player_rating[1] = player.final_rating
                     player.rating_change = 0
                     player.final_rating = player.player_rating[1]
                     player.matches_won = 0
                     player.games_won = 0
-                self.group.sort_ratings(1)
 
         for player in self.group.sorted_players:
             league_roster_dict[player.player_name] = player.final_rating
@@ -494,10 +493,10 @@ class SummarySheet:
     def create_title_info(self):
         description = 'Group winners (denoted by **) are promoted to the next higher table during the next week' \
                       ' if they are present.'
-        self.worksheet.merge_range(first_row=0, first_col=0, last_row=0, last_col=8,
+        self.worksheet.merge_range(first_row=0, first_col=1, last_row=0, last_col=8,
                                    data='League Summary - {}'.format(self.name),
                                    cell_format=self.summary_main_title_format)
-        self.worksheet.merge_range(first_row=2, first_col=2, last_row=3, last_col=6, data=description,
+        self.worksheet.merge_range(first_row=2, first_col=2, last_row=3, last_col=7, data=description,
                                    cell_format=self.summary_description_format)
 
     def make_table(self, title_row_num, header_row_num, group_num):
@@ -714,8 +713,8 @@ def set_up_workbook():
 
 def get_match_inputs(group, backtrack=False):
     print('-  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\n')
-    print('Please input the game scores for {}.'.format(group.group_name))
-    print("\nFor example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
+    print('Please input the game scores for {}.\n'.format(group.group_name))
+    print("For example, assuming B won 3 - 2 for Match B vs D, input 3:2.")
     print("In the case of B losing to D 2-3, input 2:3.\n")
 
     match_list = []
@@ -772,7 +771,7 @@ def generate_workbook():
     print('_______________________________________________________________________________')
     print("Basic rules for league at GTTTA:\n")
     print("There can be no more than seven players in any group.")
-    print("There can be no less than four people per group.")
+    print("There can be no less than three people per group.")
     print("Type 'back' or 'b' to go back at any time.")
     print("Type 'quit' or 'q' to exit the program at any time.\n")
 
@@ -790,7 +789,7 @@ def generate_workbook():
     ratings_sheet_name = get_ratings_sheet_name(file_name)
     league_roster_list, league_roster_dict = google_sheets_functions.get_league_roster(service, ratings_sheet_name)
     prize_points_sheet_name = get_prize_points_sheet_name(ratings_sheet_name)
-    prize_points_dict, points_used, numLeagues = google_sheets_functions.get_prize_points(service, prize_points_sheet_name)
+    prize_points_dict, points_used, num_leagues = google_sheets_functions.get_prize_points(service, prize_points_sheet_name)
     ratings_sheet_start_row_index = len(league_roster_dict) + 1
 
     group_index = 0
@@ -845,8 +844,8 @@ def generate_workbook():
         title_row_num = last_row_num + 2
         group_index += 1
 
-    print('_______________________________________________________________________________')
-    print('\nOpening league sheet...')
+    print('_______________________________________________________________________________\n')
+    print('Opening league sheet...')
 
     workbook.close()
     ratings_sheet_end_row_index = len(league_roster_dict) + 1
@@ -862,7 +861,7 @@ def generate_workbook():
     prize_points_dict[file_name[:-5]] = prize_points
     google_sheets_functions.write_to_prize_points_sheet(service=service, roster=league_roster_dict.keys(),
                                                         prize_points=prize_points_dict,
-                                                        points_used=points_used, num_leagues = numLeagues,
+                                                        points_used=points_used, num_leagues = num_leagues,
                                                         start_row_index=ratings_sheet_start_row_index,
                                                         end_row_index=ratings_sheet_end_row_index,
                                                         sheet_name=prize_points_sheet_name)
