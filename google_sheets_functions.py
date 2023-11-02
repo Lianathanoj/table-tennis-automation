@@ -429,7 +429,7 @@ def get_prize_points(service, prize_points_sheet_name):
         for row in range(1, len(prize_points)):
             league_date = prize_points[0][3 + col]
             name = prize_points[row][0]
-            points = prize_points[row][3 + col]
+            points = prize_points[row][3 + col] if len(prize_points[row]) < 3 + col else 0
             points_used = prize_points[row][2]
 
             prize_points_dict[league_date][name] = points
