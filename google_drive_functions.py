@@ -10,7 +10,7 @@ from datetime import date as datetime_date
 from webbrowser import open
 
 # If modifying these scopes, delete your previously saved credentials
-# at ~/.credentials/drive_client_secret.json
+# at ~/.credentials/client_secret.json
 SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets']
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'TT Automation'

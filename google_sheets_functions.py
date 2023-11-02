@@ -9,7 +9,7 @@ from collections import defaultdict
 import xlsxwriter
 
 # If modifying these scopes, delete your previously saved credentials
-# at ~/.credentials/sheets_client_secret.json
+# at ~/.credentials/client_secret.json
 SCOPES = ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets']
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'TT Automation'
@@ -400,33 +400,42 @@ def get_prize_points_sheet_info(service, sheet_name):
     sheets = get_sheets(service, PRIZE_POINTS_SPREADSHEET_ID)
     sheet_names = [sheet['properties']['title'] for sheet in sheets]
     if sheet_name in sheet_names:
-        range = '{}!1:2'.format(sheet_name)
-        result = service.spreadsheets().values().get(
-            spreadsheetId=PRIZE_POINTS_SPREADSHEET_ID, range=range, majorDimension='COLUMNS').execute()
-        numLeagues = len(result.get('values', []))-4
-        range = '{}!A1:'.format(sheet_name)+xlsxwriter.utility.xl_col_to_name(numLeagues+4)
-        result = service.spreadsheets().values().get(
-            spreadsheetId=PRIZE_POINTS_SPREADSHEET_ID, range=range, majorDimension='ROWS').execute()
-        values = result.get('values', [])
-        if not numLeagues:
+        num_leagues_range = '{}!1:2'.format(sheet_name)
+        num_leagues_info = service.spreadsheets().values().get(
+            spreadsheetId=PRIZE_POINTS_SPREADSHEET_ID, range=num_leagues_range, majorDimension='COLUMNS').execute()
+        num_leagues = len(num_leagues_info.get('values', [])) - 4
+
+        prize_points_range = '{}!A1:'.format(sheet_name) + xlsxwriter.utility.xl_col_to_name(num_leagues + 4)
+        prize_points_info = service.spreadsheets().values().get(
+            spreadsheetId=PRIZE_POINTS_SPREADSHEET_ID, range=prize_points_range, majorDimension='ROWS').execute()
+        prize_points = prize_points_info.get('values', [])
+
+        if not num_leagues:
             print('No prize points found for this semester.')
         else:
             print('Prize points detected.\n')
-            return values, numLeagues
+            return prize_points, num_leagues
     else:
         print('No prize points found for this semester.')
         generate_prize_points_sheet(service, sheet_name)
     return None, 0
 
 def get_prize_points(service, prize_points_sheet_name):
-    prize_points, numLeagues = get_prize_points_sheet_info(service, prize_points_sheet_name)
-    prize_points_dict = defaultdict(dict)
-    points_used = {}
-    for i in range(1,numLeagues+1):
-        for j in range(1,len(prize_points)):
-            prize_points_dict[prize_points[0][3+i]][prize_points[j][0]] = prize_points[j][3+i]
-            points_used[prize_points[j][0]] = prize_points[j][2] if prize_points[j][2] != '' else 0
-    return prize_points_dict, points_used, numLeagues
+    prize_points, num_leagues = get_prize_points_sheet_info(service, prize_points_sheet_name)
+    prize_points_dict = defaultdict(dict) # this will look something like { '09-10-23': { 'Jonathan L': 6, 'Alex L': 8 } }
+    name_to_points_used_dict = {}
+
+    for col in range(1, num_leagues + 1):
+        for row in range(1, len(prize_points)):
+            league_date = prize_points[0][3 + col]
+            name = prize_points[row][0]
+            points = prize_points[row][3 + col] if len(prize_points[row]) < 3 + col else 0
+            points_used = prize_points[row][2]
+
+            prize_points_dict[league_date][name] = points
+            name_to_points_used_dict[name] = points_used if points_used != '' else 0
+
+    return prize_points_dict, name_to_points_used_dict, num_leagues
 
 def generate_prize_points_sheet(service, sheet_name):
     new_sheet_body = {
